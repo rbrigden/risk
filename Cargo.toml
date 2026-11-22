@@ -38,5 +38,9 @@ name = "riskbot-dashboard"
 required-features = ["visualizer"]
 
 [[bin]]
+name = "riskbot-web"
+required-features = ["visualizer"]
+
+[[bin]]
 name = "riskbot-train"
 required-features = ["train"]

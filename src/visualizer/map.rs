@@ -706,6 +706,84 @@ impl Map {
             right_clicked,
         }
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn export_board_json(&self) -> serde_json::Value {
+        use super::state::PLAYER_COLORS;
+        use crate::game::REGIONS;
+
+        let player_colors: Vec<String> = PLAYER_COLORS
+            .iter()
+            .map(|c| format!("#{:02x}{:02x}{:02x}", c.r(), c.g(), c.b()))
+            .collect();
+
+        let continents: Vec<serde_json::Value> = self
+            .continents
+            .iter()
+            .enumerate()
+            .map(|(id, c)| {
+                let outline: Vec<[f32; 2]> = c.outline.iter().map(|p| [p.x, p.y]).collect();
+                serde_json::json!({
+                    "id": id,
+                    "name": CONTINENT_NAMES[id],
+                    "short_name": CONTINENT_SHORT_NAMES[id],
+                    "outline": outline,
+                    "label": [c.label.x, c.label.y],
+                    "territories": REGIONS[id],
+                })
+            })
+            .collect();
+
+        let territories: Vec<serde_json::Value> = self
+            .territories
+            .iter()
+            .enumerate()
+            .map(|(id, t)| {
+                let outline: Vec<[f32; 2]> = t.outline.iter().map(|p| [p.x, p.y]).collect();
+                let neighbors: Vec<usize> = EDGES
+                    .iter()
+                    .filter_map(|&(a, b)| (a == id).then_some(b))
+                    .collect();
+                serde_json::json!({
+                    "id": id,
+                    "name": territory_name(id),
+                    "continent": continent_of(id),
+                    "outline": outline,
+                    "marker": [t.marker.x, t.marker.y],
+                    "neighbors": neighbors,
+                })
+            })
+            .collect();
+
+        let bridges: Vec<serde_json::Value> = self
+            .bridges
+            .iter()
+            .enumerate()
+            .map(|(index, b)| {
+                let points: Vec<[f32; 2]> = b.curve_points.iter().map(|p| [p.x, p.y]).collect();
+                serde_json::json!({
+                    "index": index,
+                    "label": b.label.to_string(),
+                    "a": b.a,
+                    "b": b.b,
+                    "start": [b.start.x, b.start.y],
+                    "end": [b.end.x, b.end.y],
+                    "control": [b.control.x, b.control.y],
+                    "points": points,
+                })
+            })
+            .collect();
+
+        serde_json::json!({
+            "width": SIZE.x,
+            "height": SIZE.y,
+            "player_colors": player_colors,
+            "continent_bonus": CONTINENT_BONUS,
+            "continents": continents,
+            "territories": territories,
+            "bridges": bridges,
+        })
+    }
 }
 
 fn draw_ocean_backdrop(painter: &egui::Painter, rect: Rect, project: impl Fn(Pos2) -> Pos2) {

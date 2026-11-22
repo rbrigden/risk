@@ -11,6 +11,8 @@ use crate::game::{Action, EDGES, Game, MAX_PLAYERS, N, Phase, REGIONS};
 mod battles;
 mod map;
 mod policy;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod server;
 mod state;
 
 use policy::{

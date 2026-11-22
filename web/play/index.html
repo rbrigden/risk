@@ -1,0 +1,4149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riskbot // Play Arena</title>
+  <style>
+    :root {
+      --bg: #131c26;
+      --bg-deep: #0c141d;
+      --bg-elevated: #17222e;
+      --card: #1b2836;
+      --card-hover: #203040;
+      --border: #293b4d;
+      --border-strong: #375067;
+      --text: #e9f1f6;
+      --text-muted: #93a9bd;
+      --text-dim: #698095;
+      --cyan: #5ac7ef;
+      --cyan-soft: rgba(90, 199, 239, 0.16);
+      --coral: #ff7661;
+      --coral-soft: rgba(255, 118, 97, 0.18);
+      --crimson: #ef5360;
+      --crimson-soft: rgba(239, 83, 96, 0.2);
+      --sage: #8ad672;
+      --sage-soft: rgba(138, 214, 114, 0.16);
+      --emerald: #4ade80;
+      --emerald-soft: rgba(74, 222, 128, 0.18);
+      --gold: #f2c94c;
+      --gold-soft: rgba(242, 201, 76, 0.16);
+      --steel: #58a6e8;
+      --steel-soft: rgba(88, 166, 232, 0.18);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-xs: 6px;
+      --shadow: 0 10px 28px rgba(4, 10, 18, 0.4);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      background:
+        radial-gradient(1100px 420px at 16% -10%, rgba(90, 199, 239, 0.08), transparent 60%),
+        radial-gradient(900px 360px at 88% -8%, rgba(242, 201, 76, 0.05), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13.5px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .mono {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* App Shell */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    /* Top Bar */
+    .topbar {
+      flex: none;
+      z-index: 40;
+      backdrop-filter: blur(12px);
+      background: rgba(19, 28, 38, 0.9);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 54px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: none;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: linear-gradient(145deg, rgba(90, 199, 239, 0.24), rgba(90, 199, 239, 0.05));
+      border: 1px solid rgba(90, 199, 239, 0.36);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 18px rgba(90, 199, 239, 0.16);
+    }
+
+    .brand-title {
+      font-size: 14.5px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .brand-title span {
+      color: var(--cyan);
+      font-weight: 600;
+    }
+
+    .divider-v {
+      width: 1px;
+      height: 22px;
+      background: var(--border);
+      flex: none;
+    }
+
+    .turn-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .turn-badge strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .phase-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      border: 1px solid var(--border-strong);
+      background: var(--card);
+      color: var(--text);
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .phase-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: none;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .phase-pill.phase-reinforce {
+      border-color: rgba(90, 199, 239, 0.45);
+      background: rgba(90, 199, 239, 0.12);
+    }
+
+    .phase-pill.phase-attack {
+      border-color: rgba(239, 83, 96, 0.5);
+      background: rgba(239, 83, 96, 0.14);
+    }
+
+    .phase-pill.phase-fortify {
+      border-color: rgba(74, 222, 128, 0.45);
+      background: rgba(74, 222, 128, 0.12);
+    }
+
+    .phase-pill.phase-ended {
+      border-color: rgba(242, 201, 76, 0.6);
+      background: rgba(242, 201, 76, 0.16);
+      color: var(--gold);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-label {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+
+    .seg {
+      display: inline-flex;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .seg button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      white-space: nowrap;
+    }
+
+    .seg button:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .seg button.active {
+      background: rgba(90, 199, 239, 0.18);
+      color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(90, 199, 239, 0.36);
+    }
+
+    .btn {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 11px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.14s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--border-strong);
+      background: var(--card-hover);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(90, 199, 239, 0.28), rgba(62, 155, 214, 0.22));
+      border-color: rgba(90, 199, 239, 0.52);
+      color: #dff5ff;
+      box-shadow: 0 2px 12px rgba(90, 199, 239, 0.16);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(90, 199, 239, 0.38), rgba(62, 155, 214, 0.3));
+      border-color: var(--cyan);
+      color: #ffffff;
+    }
+
+    .btn-danger {
+      background: rgba(239, 83, 96, 0.16);
+      border-color: rgba(239, 83, 96, 0.48);
+      color: #ffadb4;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(239, 83, 96, 0.26);
+      border-color: var(--crimson);
+      color: #fff;
+    }
+
+    .btn-gold {
+      background: rgba(242, 201, 76, 0.16);
+      border-color: rgba(242, 201, 76, 0.5);
+      color: #ffe388;
+    }
+
+    .btn-gold:hover:not(:disabled) {
+      background: rgba(242, 201, 76, 0.26);
+      border-color: var(--gold);
+      color: #fff;
+    }
+
+    .btn-emerald {
+      background: rgba(74, 222, 128, 0.14);
+      border-color: rgba(74, 222, 128, 0.44);
+      color: #aaf5c4;
+    }
+
+    .btn-emerald:hover:not(:disabled) {
+      background: rgba(74, 222, 128, 0.24);
+      border-color: var(--emerald);
+      color: #fff;
+    }
+
+    .btn-paused {
+      background: var(--gold-soft);
+      border-color: rgba(242, 201, 76, 0.55);
+      color: var(--gold);
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    /* Main Workspace Split */
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .stage-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-deep);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 48%, #14283b 0%, #0d1a27 58%, #09121c 100%);
+    }
+
+    #board-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* SVG Cartographic Styling */
+    .graticule-line {
+      stroke: rgba(130, 178, 214, 0.065);
+      stroke-width: 1;
+      fill: none;
+    }
+
+    .ocean-label {
+      fill: rgba(145, 190, 224, 0.16);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.36em;
+      text-anchor: middle;
+      pointer-events: none;
+      font-family: var(--sans);
+    }
+
+    .bridge-glow {
+      fill: none;
+      stroke: rgba(90, 199, 239, 0.12);
+      stroke-width: 6;
+      stroke-linecap: round;
+      transition: stroke 0.2s ease, stroke-width 0.2s ease;
+      pointer-events: none;
+    }
+
+    .bridge-lane {
+      fill: none;
+      stroke: rgba(145, 200, 238, 0.44);
+      stroke-width: 1.8;
+      stroke-dasharray: 6 5;
+      stroke-linecap: round;
+      transition: stroke 0.2s ease, stroke-width 0.2s ease;
+      pointer-events: none;
+    }
+
+    .bridge-group.active .bridge-glow {
+      stroke: rgba(90, 199, 239, 0.34);
+      stroke-width: 9;
+    }
+
+    .bridge-group.active .bridge-lane {
+      stroke: #8ce2ff;
+      stroke-width: 2.6;
+      animation: marchDash 0.85s linear infinite;
+    }
+
+    .bridge-group.battle .bridge-glow {
+      stroke: rgba(255, 118, 97, 0.4);
+      stroke-width: 10;
+    }
+
+    .bridge-group.battle .bridge-lane {
+      stroke: #ffb3a6;
+      stroke-width: 3;
+      animation: marchDash 0.55s linear infinite;
+    }
+
+    .bridge-port {
+      fill: #102131;
+      stroke: rgba(145, 200, 238, 0.65);
+      stroke-width: 1.5;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+
+    .bridge-group.active .bridge-port {
+      fill: var(--cyan);
+      stroke: #fff;
+    }
+
+    .bridge-badge-bg {
+      fill: rgba(13, 25, 38, 0.88);
+      stroke: rgba(120, 178, 218, 0.45);
+      stroke-width: 1;
+      transition: all 0.2s ease;
+    }
+
+    .bridge-group.active .bridge-badge-bg {
+      fill: rgba(24, 62, 88, 0.96);
+      stroke: var(--cyan);
+    }
+
+    .bridge-badge-text {
+      fill: #a7d4f2;
+      font-size: 9.5px;
+      font-weight: 800;
+      font-family: var(--mono);
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+
+    @keyframes marchDash {
+      from { stroke-dashoffset: 22; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    .continent-shelf {
+      fill: none;
+      stroke: rgba(90, 199, 239, 0.085);
+      stroke-width: 16;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+
+    .continent-shadow-base {
+      fill: #09131e;
+      filter: url(#continent-shadow);
+      pointer-events: none;
+    }
+
+    .continent-halo {
+      fill: none;
+      stroke-width: 5.5;
+      stroke-linejoin: round;
+      stroke-opacity: 0.72;
+      filter: url(#soft-glow);
+      pointer-events: none;
+      transition: stroke-opacity 0.25s ease;
+    }
+
+    .territory-poly {
+      stroke: rgba(9, 17, 26, 0.82);
+      stroke-width: 1.6;
+      stroke-linejoin: round;
+      transition: fill 0.16s ease, filter 0.16s ease, stroke 0.16s ease, stroke-width 0.16s ease;
+    }
+
+    .territory-poly.clickable {
+      cursor: pointer;
+    }
+
+    .territory-poly.hovered {
+      filter: brightness(1.16);
+      stroke: rgba(255, 255, 255, 0.75);
+      stroke-width: 2.2;
+    }
+
+    .territory-overlay {
+      fill: none;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .territory-overlay.changed {
+      stroke: rgba(242, 201, 76, 0.85);
+      stroke-width: 2.2;
+    }
+
+    .territory-overlay.selectable {
+      stroke: rgba(226, 245, 255, 0.56);
+      stroke-width: 2;
+      animation: pulseSelectable 2.1s ease-in-out infinite;
+    }
+
+    .territory-overlay.selected-outer {
+      stroke: var(--gold);
+      stroke-width: 5.5;
+      stroke-opacity: 0.85;
+      filter: url(#soft-glow);
+    }
+
+    .territory-overlay.selected-inner {
+      stroke: #ffffff;
+      stroke-width: 2.4;
+    }
+
+    .territory-overlay.target-attack {
+      stroke: #ff5868;
+      stroke-width: 3.4;
+      fill: rgba(255, 76, 96, 0.16);
+      animation: pulseTarget 1.15s ease-in-out infinite;
+    }
+
+    .territory-overlay.target-fortify {
+      stroke: #4ade80;
+      stroke-width: 3.2;
+      fill: rgba(74, 222, 128, 0.15);
+      animation: pulseTarget 1.25s ease-in-out infinite;
+    }
+
+    .territory-overlay.battle-src {
+      stroke: rgba(242, 201, 76, 0.92);
+      stroke-width: 3;
+    }
+
+    .territory-overlay.battle-dst {
+      stroke: rgba(255, 107, 118, 0.96);
+      stroke-width: 3.4;
+    }
+
+    @keyframes pulseSelectable {
+      0%, 100% { stroke-opacity: 0.3; }
+      50% { stroke-opacity: 0.82; }
+    }
+
+    @keyframes pulseTarget {
+      0%, 100% { stroke-opacity: 0.58; }
+      50% { stroke-opacity: 1; }
+    }
+
+    /* Medallions */
+    .medallion-group {
+      transition: transform 0.15s ease;
+    }
+
+    .medallion-group.clickable {
+      cursor: pointer;
+    }
+
+    .medallion-pill {
+      fill: rgba(12, 21, 31, 0.92);
+      stroke-width: 2.1;
+      filter: url(#medallion-shadow);
+      transition: fill 0.15s ease, stroke-width 0.15s ease;
+    }
+
+    .medallion-group.selected .medallion-pill {
+      fill: rgba(24, 38, 54, 0.98);
+      stroke: #ffffff !important;
+      stroke-width: 2.6;
+    }
+
+    .medallion-group.hovered .medallion-pill {
+      fill: rgba(22, 36, 52, 0.98);
+    }
+
+    .medallion-troops {
+      fill: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      font-family: var(--sans);
+      font-variant-numeric: tabular-nums;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+
+    .medallion-id-bg {
+      fill: rgba(9, 16, 24, 0.84);
+      stroke: rgba(147, 169, 189, 0.28);
+      stroke-width: 0.9;
+      pointer-events: none;
+    }
+
+    .medallion-id-text {
+      fill: #a8bfd3;
+      font-size: 8.8px;
+      font-weight: 700;
+      font-family: var(--mono);
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+
+    /* Continent Labels */
+    .cont-label-name {
+      fill: rgba(232, 243, 252, 0.82);
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-anchor: middle;
+      paint-order: stroke;
+      stroke: rgba(8, 16, 25, 0.88);
+      stroke-width: 3.5px;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .cont-bonus-bg {
+      fill: rgba(13, 24, 36, 0.9);
+      stroke: rgba(120, 155, 184, 0.45);
+      stroke-width: 1.1;
+      pointer-events: none;
+    }
+
+    .cont-bonus-text {
+      fill: #c6dcf0;
+      font-size: 9.5px;
+      font-weight: 800;
+      font-family: var(--mono);
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+
+    /* Tactical & Battle Arrows */
+    .tactical-arrow {
+      fill: none;
+      stroke-width: 3.6;
+      stroke-linecap: round;
+      stroke-dasharray: 8 5;
+      animation: marchDash 0.6s linear infinite;
+      pointer-events: none;
+      filter: url(#soft-glow);
+    }
+
+    .tactical-arrow-bg {
+      fill: none;
+      stroke: rgba(8, 15, 24, 0.65);
+      stroke-width: 6.5;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+
+    .battle-arrow {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 10 6;
+      animation: marchDash 0.45s linear infinite;
+      pointer-events: none;
+      filter: url(#soft-glow);
+    }
+
+    .impact-ring {
+      fill: none;
+      stroke: #ff6b78;
+      stroke-width: 3;
+      pointer-events: none;
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: impactPulse 1.05s ease-out infinite;
+    }
+
+    @keyframes impactPulse {
+      0% { transform: scale(0.55); opacity: 0.95; stroke-width: 3.5; }
+      100% { transform: scale(1.9); opacity: 0; stroke-width: 0.8; }
+    }
+
+    .capture-star {
+      fill: #f2c94c;
+      stroke: #fff6d1;
+      stroke-width: 1;
+      pointer-events: none;
+      transform-box: fill-box;
+      transform-origin: center;
+      filter: url(#soft-glow);
+      animation: captureBurst 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes captureBurst {
+      0% { transform: scale(0.2) rotate(-25deg); opacity: 0; }
+      35% { transform: scale(1.22) rotate(8deg); opacity: 1; }
+      70% { transform: scale(0.95) rotate(14deg); opacity: 0.95; }
+      100% { transform: scale(1.15) rotate(20deg); opacity: 0; }
+    }
+
+    /* SVG Floating Popups */
+    .popup-float {
+      pointer-events: none;
+      animation: popupRise 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes popupRise {
+      0% { transform: translateY(4px) scale(0.75); opacity: 0; }
+      18% { transform: translateY(-10px) scale(1.06); opacity: 1; }
+      72% { transform: translateY(-30px) scale(1); opacity: 1; }
+      100% { transform: translateY(-46px) scale(0.94); opacity: 0; }
+    }
+
+    /* Bottom Action Bar */
+    .action-bar {
+      flex: none;
+      min-height: 60px;
+      background: rgba(20, 30, 41, 0.96);
+      border-top: 1px solid var(--border);
+      padding: 9px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 20;
+    }
+
+    .action-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .action-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: none;
+    }
+
+    .action-badge {
+      padding: 5px 10px;
+      border-radius: var(--radius-xs);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex: none;
+    }
+
+    .action-badge.reinforce {
+      background: var(--cyan-soft);
+      color: var(--cyan);
+      border: 1px solid rgba(90, 199, 239, 0.4);
+    }
+
+    .action-badge.attack {
+      background: var(--crimson-soft);
+      color: #ff98a1;
+      border: 1px solid rgba(239, 83, 96, 0.42);
+    }
+
+    .action-badge.fortify {
+      background: var(--emerald-soft);
+      color: #8cf2b0;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+    }
+
+    .action-badge.ai {
+      background: rgba(147, 169, 189, 0.14);
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+    }
+
+    .action-badge.ended {
+      background: var(--gold-soft);
+      color: var(--gold);
+      border: 1px solid rgba(242, 201, 76, 0.5);
+    }
+
+    .action-info {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .action-info strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .metric-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      flex: none;
+    }
+
+    .metric-chip b {
+      color: var(--cyan);
+    }
+
+    /* Right Tactical Sidebar */
+    .sidebar {
+      width: 350px;
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-elevated);
+      border-left: 1px solid var(--border);
+      padding: 10px;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(4, 10, 18, 0.22);
+    }
+
+    .panel-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(41, 59, 77, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: rgba(19, 28, 38, 0.45);
+      flex: none;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    /* Standings Card */
+    .standings-list {
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 235px;
+      overflow-y: auto;
+    }
+
+    .player-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: rgba(19, 28, 38, 0.44);
+      transition: all 0.18s ease;
+    }
+
+    .player-row.active {
+      background: rgba(32, 48, 66, 0.92);
+      border-color: var(--player-color, var(--cyan));
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), inset 3px 0 0 var(--player-color, var(--cyan));
+    }
+
+    .player-row.eliminated {
+      opacity: 0.44;
+    }
+
+    .player-row.eliminated .player-name {
+      text-decoration: line-through;
+    }
+
+    .player-swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      box-shadow: 0 0 8px currentColor;
+      flex: none;
+    }
+
+    .player-meta {
+      min-width: 0;
+    }
+
+    .player-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .player-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-sub {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-stats {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: none;
+    }
+
+    .stat-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1.15;
+    }
+
+    .stat-main {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text);
+      font-family: var(--mono);
+    }
+
+    .stat-sub {
+      font-size: 9.8px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    .v-badge {
+      padding: 2px 5px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: var(--mono);
+      background: rgba(15, 23, 33, 0.85);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      min-width: 44px;
+      text-align: center;
+    }
+
+    .v-badge.pos { color: #8ad672; border-color: rgba(138, 214, 114, 0.35); }
+    .v-badge.neg { color: #ff8e80; border-color: rgba(255, 118, 97, 0.35); }
+
+    /* Live Dice Arena */
+    .dice-panel {
+      flex: none;
+      cursor: pointer;
+      transition: border-color 0.18s ease;
+    }
+
+    .dice-panel:hover {
+      border-color: var(--border-strong);
+    }
+
+    .dice-arena-body {
+      padding: 10px 12px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background:
+        radial-gradient(240px 110px at 50% 0%, rgba(239, 83, 96, 0.08), transparent 70%),
+        radial-gradient(240px 110px at 50% 100%, rgba(88, 166, 232, 0.08), transparent 70%),
+        rgba(14, 22, 31, 0.65);
+    }
+
+    .dice-matchup {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .dice-route {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      min-width: 0;
+    }
+
+    .dice-route-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 96px;
+    }
+
+    .dice-status-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      flex: none;
+    }
+
+    .dice-status-pill.rolling {
+      color: var(--cyan);
+      border-color: rgba(90, 199, 239, 0.48);
+      background: rgba(90, 199, 239, 0.14);
+      animation: pulseText 0.6s ease-in-out infinite;
+    }
+
+    .dice-status-pill.captured {
+      color: var(--gold);
+      border-color: rgba(242, 201, 76, 0.55);
+      background: rgba(242, 201, 76, 0.16);
+    }
+
+    .dice-status-pill.held {
+      color: #8ccbff;
+      border-color: rgba(88, 166, 232, 0.45);
+      background: rgba(88, 166, 232, 0.14);
+    }
+
+    .dice-status-pill.clash {
+      color: #ff9fa8;
+      border-color: rgba(239, 83, 96, 0.45);
+      background: rgba(239, 83, 96, 0.14);
+    }
+
+    @keyframes pulseText {
+      0%, 100% { opacity: 0.65; }
+      50% { opacity: 1; }
+    }
+
+    .dice-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px 10px;
+      align-items: center;
+      justify-items: center;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(9, 15, 22, 0.58);
+      border: 1px solid rgba(41, 59, 77, 0.62);
+    }
+
+    .die-slot {
+      width: 50px;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      border-radius: 11px;
+    }
+
+    .die-slot.empty {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed rgba(105, 128, 149, 0.22);
+    }
+
+    .die-svg {
+      width: 46px;
+      height: 46px;
+      display: block;
+      transition: transform 0.14s ease, opacity 0.16s ease, filter 0.16s ease;
+    }
+
+    .die-slot.winner .die-svg {
+      filter: drop-shadow(0 0 8px var(--win-glow, rgba(242, 201, 76, 0.72)));
+    }
+
+    .die-slot.loser .die-svg {
+      opacity: 0.62;
+      filter: saturate(0.75);
+    }
+
+    .die-slot.unpaired .die-svg {
+      opacity: 0.42;
+      filter: saturate(0.65);
+    }
+
+    .die-slot.snap .die-svg {
+      animation: dieSnap 0.22s cubic-bezier(0.18, 1.35, 0.4, 1);
+    }
+
+    @keyframes dieSnap {
+      0% { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+
+    .die-compare {
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 7px;
+      border-radius: 999px;
+      font-size: 9.8px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      font-family: var(--mono);
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .die-compare.atk-win {
+      background: rgba(239, 83, 96, 0.18);
+      color: #ff9ea6;
+      border-color: rgba(239, 83, 96, 0.42);
+    }
+
+    .die-compare.def-win {
+      background: rgba(88, 166, 232, 0.18);
+      color: #9cd2ff;
+      border-color: rgba(88, 166, 232, 0.42);
+    }
+
+    .die-compare.rolling {
+      background: rgba(90, 199, 239, 0.12);
+      color: var(--cyan);
+      border-color: rgba(90, 199, 239, 0.28);
+      animation: pulseText 0.45s ease-in-out infinite;
+    }
+
+    .die-compare.none {
+      color: var(--text-dim);
+    }
+
+    .dice-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .dice-empty-note {
+      padding: 16px 8px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* Battle Log */
+    .log-panel {
+      flex: 1;
+      min-height: 0;
+    }
+
+    .battle-log-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .battle-card {
+      padding: 7px 9px;
+      border-radius: var(--radius-sm);
+      background: rgba(19, 28, 38, 0.56);
+      border: 1px solid rgba(41, 59, 77, 0.72);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .battle-card:hover, .battle-card.pinned {
+      background: rgba(31, 47, 64, 0.9);
+      border-color: var(--border-strong);
+    }
+
+    .battle-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .battle-card-route {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 600;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mini-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex: none;
+    }
+
+    .battle-card-turn {
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      flex: none;
+    }
+
+    .battle-card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .mini-dice-row {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .mini-vs {
+      font-size: 9.5px;
+      color: var(--text-dim);
+      margin: 0 2px;
+      font-family: var(--mono);
+    }
+
+    .mini-die {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .outcome-tag {
+      font-size: 10px;
+      font-weight: 800;
+      font-family: var(--mono);
+      padding: 2px 6px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+
+    .outcome-tag.captured {
+      background: rgba(242, 201, 76, 0.16);
+      color: var(--gold);
+      border: 1px solid rgba(242, 201, 76, 0.42);
+    }
+
+    .outcome-tag.casualties {
+      background: rgba(19, 28, 38, 0.85);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    /* Floating Hover Tooltip */
+    .map-tooltip {
+      position: fixed;
+      z-index: 80;
+      pointer-events: none;
+      min-width: 215px;
+      max-width: 275px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15, 23, 33, 0.94);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 12px 30px rgba(2, 8, 16, 0.55);
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+
+    .map-tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .tt-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+
+    .tt-name {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .tt-id {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-dim);
+    }
+
+    .tt-cont {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 7px;
+    }
+
+    .tt-owner-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 8px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      margin-bottom: 7px;
+      font-size: 12px;
+    }
+
+    .tt-owner-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      min-width: 0;
+    }
+
+    .tt-troops {
+      font-family: var(--mono);
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .tt-neighbors-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .tt-neighbors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 7px;
+    }
+
+    .tt-nb-chip {
+      font-size: 10.5px;
+      padding: 1px 6px;
+      border-radius: 5px;
+      background: rgba(27, 40, 54, 0.9);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .tt-nb-chip .sea-tag {
+      color: var(--cyan);
+      font-family: var(--mono);
+      font-weight: 800;
+      font-size: 9.5px;
+    }
+
+    .tt-hint {
+      font-size: 11px;
+      font-weight: 700;
+      padding-top: 6px;
+      border-top: 1px solid rgba(41, 59, 77, 0.7);
+      color: var(--cyan);
+    }
+
+    .tt-hint.attack { color: #ff8b96; }
+    .tt-hint.fortify { color: #7df2a8; }
+    .tt-hint.muted { color: var(--text-dim); font-weight: 500; }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      z-index: 120;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(19, 28, 38, 0.96);
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error {
+      border-color: rgba(239, 83, 96, 0.6);
+      color: #ffb2b9;
+    }
+
+    /* Match Setup Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(6, 12, 19, 0.72);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 720px;
+      max-height: 90vh;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(2, 8, 16, 0.65);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(19, 28, 38, 0.75);
+    }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      display: grid;
+      place-items: center;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+      border-color: var(--border-strong);
+    }
+
+    .modal-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .setup-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .preset-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .seats-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .seat-row {
+      display: grid;
+      grid-template-columns: 52px 136px 1fr 112px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+
+    .seat-tag {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 800;
+      font-family: var(--mono);
+    }
+
+    .field-select, .field-input {
+      background: var(--bg-elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 6px 9px;
+      font: inherit;
+      font-size: 12.5px;
+      width: 100%;
+      transition: border-color 0.15s ease;
+    }
+
+    .field-select:focus, .field-input:focus {
+      outline: none;
+      border-color: var(--cyan);
+    }
+
+    .field-select:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .seat-placeholder {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      padding-left: 4px;
+    }
+
+    .mpk-loader {
+      padding: 11px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(15, 23, 33, 0.72);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mpk-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mpk-status {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      min-height: 16px;
+    }
+
+    .mpk-status.ok { color: #8ad672; }
+    .mpk-status.err { color: #ff8e96; }
+
+    .options-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+    }
+
+    .modal-foot {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      background: rgba(19, 28, 38, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(105, 128, 149, 0.35); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(147, 169, 189, 0.55); }
+
+    @media (max-width: 1060px) {
+      .sidebar { width: 310px; }
+      .control-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand">
+          <div class="brand-icon" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2.5L20.5 7.4V16.6L12 21.5L3.5 16.6V7.4L12 2.5Z" stroke="#5ac7ef" stroke-width="1.8"/>
+              <path d="M12 7L16.5 9.6V14.4L12 17L7.5 14.4V9.6L12 7Z" fill="rgba(90,199,239,0.28)" stroke="#e9f1f6" stroke-width="1.4"/>
+              <circle cx="12" cy="12" r="2" fill="#f2c94c"/>
+            </svg>
+          </div>
+          <div class="brand-title">RISKBOT <span>// ARENA</span></div>
+        </div>
+        <div class="divider-v"></div>
+        <div class="turn-badge tabular" id="turn-badge">Turn <strong>0</strong> / 500</div>
+        <div class="phase-pill" id="phase-pill">
+          <span class="phase-dot" id="phase-dot"></span>
+          <span id="phase-pill-text">LOADING...</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="control-group">
+          <span class="control-label">AI Speed</span>
+          <div class="seg" id="speed-seg">
+            <button type="button" data-speed="slow">Slow</button>
+            <button type="button" data-speed="normal" class="active">Normal</button>
+            <button type="button" data-speed="fast">Fast</button>
+            <button type="button" data-speed="instant">Instant</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn" id="btn-pause" style="display:none;" title="Pause / Resume AI (Space)">Pause</button>
+        <button type="button" class="btn" id="btn-step" style="display:none;" title="Advance one AI step">Step</button>
+        <button type="button" class="btn" id="btn-restart" title="Restart match with current seats">Restart</button>
+        <button type="button" class="btn btn-primary" id="btn-setup">Match Setup</button>
+      </div>
+    </header>
+
+    <!-- MAIN SPLIT -->
+    <main class="workspace">
+      <section class="stage-col">
+        <div class="map-wrap">
+          <svg id="board-svg" viewBox="0 0 1280 680" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Risk Tactical World Map">
+            <defs>
+              <radialGradient id="ocean-grad" cx="50%" cy="46%" r="68%">
+                <stop offset="0%" stop-color="#183047"/>
+                <stop offset="56%" stop-color="#0f1f2f"/>
+                <stop offset="100%" stop-color="#09131d"/>
+              </radialGradient>
+              <filter id="continent-shadow" x="-10%" y="-10%" width="120%" height="125%">
+                <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#03080e" flood-opacity="0.72"/>
+              </filter>
+              <filter id="medallion-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#02070d" flood-opacity="0.75"/>
+              </filter>
+              <filter id="soft-glow" x="-35%" y="-35%" width="170%" height="170%">
+                <feGaussianBlur stdDeviation="3.5" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              <marker id="arrow-attack" viewBox="0 0 12 12" refX="8" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M1 1.5L10.5 6L1 10.5L3.3 6Z" fill="#ff5b6c"/>
+              </marker>
+              <marker id="arrow-fortify" viewBox="0 0 12 12" refX="8" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M1 1.5L10.5 6L1 10.5L3.3 6Z" fill="#4ade80"/>
+              </marker>
+              <marker id="arrow-battle" viewBox="0 0 12 12" refX="8" refY="6" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+                <path d="M1 1.5L10.5 6L1 10.5L3.3 6Z" fill="#f2c94c"/>
+              </marker>
+            </defs>
+
+            <g id="layer-ocean"></g>
+            <g id="layer-bridges"></g>
+            <g id="layer-continents"></g>
+            <g id="layer-territories"></g>
+            <g id="layer-overlays"></g>
+            <g id="layer-arrows"></g>
+            <g id="layer-cont-labels"></g>
+            <g id="layer-medallions"></g>
+            <g id="layer-popups"></g>
+          </svg>
+        </div>
+
+        <!-- BOTTOM ACTION BAR -->
+        <div class="action-bar" id="action-bar">
+          <div class="action-left">
+            <span class="action-badge ai">LOADING</span>
+            <span class="action-info">Connecting to Riskbot arena...</span>
+          </div>
+          <div class="action-right"></div>
+        </div>
+      </section>
+
+      <!-- RIGHT TACTICAL SIDEBAR -->
+      <aside class="sidebar">
+        <!-- Players & Standings -->
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Players &amp; Standings</div>
+            <div class="panel-sub tabular" id="game-num-label">Game #1</div>
+          </div>
+          <div class="standings-list" id="standings-list"></div>
+        </section>
+
+        <!-- Live Dice Arena -->
+        <section class="panel dice-panel" id="dice-panel" title="Hover to highlight this battle on the map">
+          <div class="panel-header">
+            <div class="panel-title">Live Dice Arena</div>
+            <div class="panel-sub" id="dice-turn-label">—</div>
+          </div>
+          <div class="dice-arena-body" id="dice-arena-body">
+            <div class="dice-empty-note">Awaiting first clash...</div>
+          </div>
+        </section>
+
+        <!-- Chronological Battle Log -->
+        <section class="panel log-panel">
+          <div class="panel-header">
+            <div class="panel-title">Battle Log</div>
+            <div class="panel-sub tabular" id="battle-count-label">0 clashes</div>
+          </div>
+          <div class="battle-log-list" id="battle-log-list">
+            <div class="dice-empty-note">No battles recorded yet.</div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <!-- FLOATING HOVER TOOLTIP -->
+  <div class="map-tooltip" id="map-tooltip" role="tooltip"></div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- MATCH SETUP MODAL -->
+  <div class="modal-backdrop" id="setup-modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="setup-modal-title">
+      <div class="modal-head">
+        <div class="modal-title" id="setup-modal-title">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="3" stroke="#5ac7ef" stroke-width="2"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="#93a9bd" stroke-width="1.6"/>
+          </svg>
+          Match Setup &amp; Policies
+        </div>
+        <button type="button" class="modal-close" id="btn-setup-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="setup-bar">
+          <div class="control-group">
+            <span class="field-label">Players</span>
+            <div class="seg" id="player-count-seg">
+              <button type="button" data-count="2">2P</button>
+              <button type="button" data-count="3">3P</button>
+              <button type="button" data-count="4">4P</button>
+              <button type="button" data-count="5">5P</button>
+              <button type="button" data-count="6">6P</button>
+            </div>
+          </div>
+          <div class="preset-row">
+            <button type="button" class="btn" data-preset="1v1">1v1 vs Best</button>
+            <button type="button" class="btn" data-preset="3p">3P Clash</button>
+            <button type="button" class="btn" data-preset="4p">4P Gauntlet</button>
+            <button type="button" class="btn btn-gold" data-preset="spectator">AI Spectator</button>
+          </div>
+        </div>
+
+        <div class="seats-list" id="setup-seats-list"></div>
+
+        <div class="mpk-loader">
+          <div class="field-label">Load Custom Policy Checkpoint (.mpk)</div>
+          <div class="mpk-row">
+            <input type="text" class="field-input mono" id="mpk-path-input" placeholder="/path/to/checkpoint.mpk">
+            <button type="button" class="btn" id="btn-load-mpk">Load .mpk</button>
+            <button type="button" class="btn" id="btn-rescan-mpk">Rescan runs/</button>
+          </div>
+          <div class="mpk-status" id="mpk-status">Discovered checkpoints appear in every Policy dropdown.</div>
+        </div>
+
+        <div class="options-row">
+          <div class="field-group">
+            <label class="field-label" for="setup-max-turns">Max Turns</label>
+            <input type="number" class="field-input tabular" id="setup-max-turns" min="20" max="5000" value="500">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="setup-seed">Seed (optional)</label>
+            <input type="number" class="field-input tabular" id="setup-seed" placeholder="Random">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <span style="font-size:11.5px; color:var(--text-dim);">Tip: Press <span class="kbd">Esc</span> to deselect, <span class="kbd">E</span> to advance phase, <span class="kbd">Space</span> to repeat attack or pause AI.</span>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn" id="btn-setup-cancel">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-start-match">Start Match</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      const DEFAULT_COLORS = ['#4fc3f7', '#ff7661', '#8ad672', '#f5c542', '#ba8cfa', '#f472b6'];
+
+      // Application state
+      const app = {
+        board: null,
+        state: null,
+        checkpoints: [],
+        bridgeByPair: new Map(),
+        selected: null,
+        hovered: null,
+        hoverBattle: null,
+        spotlightBattle: null,
+        pinnedBattleId: null,
+        reinforceBrush: 1,       // 1 | 5 | 'all'
+        attackDicePref: 'max',   // 'max' | 3 | 2 | 1
+        fortifyOption: 0,
+        lastHumanAttack: null,   // { source, target }
+        aiSpeed: 'normal',       // 'slow' | 'normal' | 'fast' | 'instant'
+        aiPaused: false,
+        aiLoopToken: 0,
+        aiTimerId: null,
+        aiConfidence: null,
+        aiValueEst: null,
+        inFlight: false,
+        setupOpen: false,
+        draftSeats: [],
+        draftMaxTurns: 500,
+        draftSeed: '',
+        diceAnimCancel: null,
+        diceAnimPromise: Promise.resolve(),
+        toastTimer: null,
+        lastMouse: { x: 0, y: 0 },
+        lastBattleIdSeen: null,
+      };
+
+      // Cached DOM handles
+      const dom = {
+        svg: document.getElementById('board-svg'),
+        layerOcean: document.getElementById('layer-ocean'),
+        layerBridges: document.getElementById('layer-bridges'),
+        layerContinents: document.getElementById('layer-continents'),
+        layerTerritories: document.getElementById('layer-territories'),
+        layerOverlays: document.getElementById('layer-overlays'),
+        layerArrows: document.getElementById('layer-arrows'),
+        layerContLabels: document.getElementById('layer-cont-labels'),
+        layerMedallions: document.getElementById('layer-medallions'),
+        layerPopups: document.getElementById('layer-popups'),
+        turnBadge: document.getElementById('turn-badge'),
+        phasePill: document.getElementById('phase-pill'),
+        phaseDot: document.getElementById('phase-dot'),
+        phasePillText: document.getElementById('phase-pill-text'),
+        speedSeg: document.getElementById('speed-seg'),
+        btnPause: document.getElementById('btn-pause'),
+        btnStep: document.getElementById('btn-step'),
+        btnRestart: document.getElementById('btn-restart'),
+        btnSetup: document.getElementById('btn-setup'),
+        actionBar: document.getElementById('action-bar'),
+        standingsList: document.getElementById('standings-list'),
+        gameNumLabel: document.getElementById('game-num-label'),
+        dicePanel: document.getElementById('dice-panel'),
+        diceTurnLabel: document.getElementById('dice-turn-label'),
+        diceArenaBody: document.getElementById('dice-arena-body'),
+        battleCountLabel: document.getElementById('battle-count-label'),
+        battleLogList: document.getElementById('battle-log-list'),
+        tooltip: document.getElementById('map-tooltip'),
+        toast: document.getElementById('toast'),
+        setupModal: document.getElementById('setup-modal'),
+        playerCountSeg: document.getElementById('player-count-seg'),
+        setupSeatsList: document.getElementById('setup-seats-list'),
+        mpkPathInput: document.getElementById('mpk-path-input'),
+        btnLoadMpk: document.getElementById('btn-load-mpk'),
+        btnRescanMpk: document.getElementById('btn-rescan-mpk'),
+        mpkStatus: document.getElementById('mpk-status'),
+        setupMaxTurns: document.getElementById('setup-max-turns'),
+        setupSeed: document.getElementById('setup-seed'),
+        btnSetupClose: document.getElementById('btn-setup-close'),
+        btnSetupCancel: document.getElementById('btn-setup-cancel'),
+        btnStartMatch: document.getElementById('btn-start-match'),
+      };
+
+      // SVG element refs for fast updates without rebuilding geometry
+      const svgRefs = {
+        territories: [],
+        medallions: [],
+        bridges: [],
+        continentHalos: [],
+        continentBonusBgs: [],
+        continentBonusTexts: [],
+      };
+
+      // ---------- Utility helpers ----------
+
+      function el(tag, attrs = {}, parent = null) {
+        const node = document.createElementNS(SVG_NS, tag);
+        for (const [k, v] of Object.entries(attrs)) {
+          if (v !== null && v !== undefined) node.setAttribute(k, String(v));
+        }
+        if (parent) parent.appendChild(node);
+        return node;
+      }
+
+      function escHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function hexToRgb(hex) {
+        const clean = (hex || '#5ac7ef').replace('#', '');
+        const full = clean.length === 3
+          ? clean.split('').map(c => c + c).join('')
+          : clean.padEnd(6, '0');
+        const num = parseInt(full, 16);
+        return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+      }
+
+      function mixHex(hexA, hexB, t) {
+        const a = hexToRgb(hexA);
+        const b = hexToRgb(hexB);
+        const r = Math.round(a[0] + (b[0] - a[0]) * t);
+        const g = Math.round(a[1] + (b[1] - a[1]) * t);
+        const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+        return `rgb(${r}, ${g}, ${bl})`;
+      }
+
+      function playerColor(idx) {
+        const palette = app.board?.player_colors?.length ? app.board.player_colors : DEFAULT_COLORS;
+        if (idx === null || idx === undefined || idx < 0) return '#64798c';
+        return palette[idx % palette.length];
+      }
+
+      function territoryFill(tid, owner) {
+        const base = playerColor(owner);
+        // Deterministic slight tonal variance so adjacent same-owner territories stay crisp
+        const tonalSteps = [0.22, 0.28, 0.34, 0.25, 0.31];
+        const shade = tonalSteps[(tid * 7 + (owner || 0) * 3) % tonalSteps.length];
+        return mixHex(base, '#111d2a', shade);
+      }
+
+      function pairKey(a, b) {
+        return a < b ? `${a}:${b}` : `${b}:${a}`;
+      }
+
+      function pointsToAttr(pts) {
+        return (pts || []).map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+      }
+
+      function showToast(msg, isError = false) {
+        dom.toast.textContent = msg;
+        dom.toast.classList.toggle('error', isError);
+        dom.toast.classList.add('show');
+        clearTimeout(app.toastTimer);
+        app.toastTimer = setTimeout(() => dom.toast.classList.remove('show'), 2600);
+      }
+
+      async function apiGet(url) {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status} on ${url}`);
+        return res.json();
+      }
+
+      async function apiPost(url, body) {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          let detail = `HTTP ${res.status}`;
+          try {
+            const j = await res.json();
+            if (j?.error) detail = j.error;
+          } catch (_) {}
+          throw new Error(detail);
+        }
+        return res.json();
+      }
+
+      // ---------- Board Static Construction ----------
+
+      function buildBoardSvg(board) {
+        dom.svg.setAttribute('viewBox', `0 0 ${board.width || 1280} ${board.height || 680}`);
+        dom.layerOcean.innerHTML = '';
+        dom.layerBridges.innerHTML = '';
+        dom.layerContinents.innerHTML = '';
+        dom.layerTerritories.innerHTML = '';
+        dom.layerContLabels.innerHTML = '';
+        dom.layerMedallions.innerHTML = '';
+        svgRefs.territories = [];
+        svgRefs.medallions = [];
+        svgRefs.bridges = [];
+        svgRefs.continentHalos = [];
+        svgRefs.continentBonusBgs = [];
+        svgRefs.continentBonusTexts = [];
+        app.bridgeByPair.clear();
+
+        const W = board.width || 1280;
+        const H = board.height || 680;
+
+        // 1. Ocean backdrop + nautical graticule + compass rose + ocean labels
+        el('rect', { x: 0, y: 0, width: W, height: H, fill: 'url(#ocean-grad)' }, dom.layerOcean);
+
+        // Subtle graticule grid
+        for (let x = 128; x < W; x += 128) {
+          el('line', { x1: x, y1: 0, x2: x, y2: H, class: 'graticule-line' }, dom.layerOcean);
+        }
+        for (let y = 85; y < H; y += 85) {
+          el('line', { x1: 0, y1: y, x2: W, y2: y, class: 'graticule-line' }, dom.layerOcean);
+        }
+        // Equator subtle dashed line
+        el('line', {
+          x1: 0, y1: H * 0.56, x2: W, y2: H * 0.56,
+          stroke: 'rgba(130, 178, 214, 0.11)', 'stroke-width': 1, 'stroke-dasharray': '5 7'
+        }, dom.layerOcean);
+
+        // Minimalist Compass Rose (lower-left Pacific)
+        const compass = el('g', { transform: 'translate(78, 594)', opacity: '0.45' }, dom.layerOcean);
+        el('circle', { cx: 0, cy: 0, r: 30, fill: 'none', stroke: 'rgba(145, 194, 230, 0.3)', 'stroke-width': 1 }, compass);
+        el('circle', { cx: 0, cy: 0, r: 24, fill: 'none', stroke: 'rgba(145, 194, 230, 0.18)', 'stroke-width': 0.9, 'stroke-dasharray': '2 3' }, compass);
+        el('polygon', { points: '0,-28 4.5,-5 0,-9 -4.5,-5', fill: '#5ac7ef' }, compass);
+        el('polygon', { points: '0,28 4.5,5 0,9 -4.5,5', fill: 'rgba(145,194,230,0.45)' }, compass);
+        el('polygon', { points: '28,0 5,4.5 9,0 5,-4.5', fill: 'rgba(145,194,230,0.45)' }, compass);
+        el('polygon', { points: '-28,0 -5,4.5 -9,0 -5,-4.5', fill: 'rgba(145,194,230,0.45)' }, compass);
+        el('circle', { cx: 0, cy: 0, r: 2.8, fill: '#e9f1f6' }, compass);
+        [
+          ['N', 0, -36],
+          ['S', 0, 39],
+          ['E', 38, 3],
+          ['W', -38, 3],
+        ].forEach(([lbl, x, y]) => {
+          const t = el('text', {
+            x, y, fill: 'rgba(170, 212, 240, 0.72)', 'font-size': 9, 'font-weight': 700,
+            'text-anchor': 'middle', 'font-family': 'var(--mono)'
+          }, compass);
+          t.textContent = lbl;
+        });
+
+        // Ocean labels
+        [
+          ['PACIFIC OCEAN', 136, 468],
+          ['ATLANTIC OCEAN', 488, 338],
+          ['INDIAN OCEAN', 852, 526],
+        ].forEach(([text, x, y]) => {
+          const t = el('text', { x, y, class: 'ocean-label' }, dom.layerOcean);
+          t.textContent = text;
+        });
+
+        // 2. Curved Sea Lanes (bridges)
+        (board.bridges || []).forEach((b) => {
+          app.bridgeByPair.set(pairKey(b.a, b.b), b);
+          const g = el('g', { class: 'bridge-group', 'data-bridge': b.index }, dom.layerBridges);
+          let d = '';
+          let midX = 0;
+          let midY = 0;
+          if (b.start && b.control && b.end) {
+            d = `M ${b.start[0]} ${b.start[1]} Q ${b.control[0]} ${b.control[1]} ${b.end[0]} ${b.end[1]}`;
+            midX = 0.25 * b.start[0] + 0.5 * b.control[0] + 0.25 * b.end[0];
+            midY = 0.25 * b.start[1] + 0.5 * b.control[1] + 0.25 * b.end[1];
+          } else if (b.points && b.points.length >= 2) {
+            d = 'M ' + b.points.map(p => `${p[0]} ${p[1]}`).join(' L ');
+            const m = b.points[Math.floor(b.points.length / 2)];
+            midX = m[0];
+            midY = m[1];
+          }
+
+          el('path', { d, class: 'bridge-glow' }, g);
+          el('path', { d, class: 'bridge-lane' }, g);
+
+          if (b.start) el('circle', { cx: b.start[0], cy: b.start[1], r: 3.8, class: 'bridge-port' }, g);
+          if (b.end) el('circle', { cx: b.end[0], cy: b.end[1], r: 3.8, class: 'bridge-port' }, g);
+
+          el('rect', {
+            x: midX - 9, y: midY - 8.5, width: 18, height: 17, rx: 5, class: 'bridge-badge-bg'
+          }, g);
+          const lbl = el('text', { x: midX, y: midY, class: 'bridge-badge-text' }, g);
+          lbl.textContent = b.label || String.fromCharCode(65 + b.index);
+
+          svgRefs.bridges.push({ bridge: b, group: g, d });
+        });
+
+        // 3. Continent Bathymetry Shelf, Drop Shadow & Control Halo
+        (board.continents || []).forEach((c) => {
+          const pts = pointsToAttr(c.outline);
+          el('polygon', { points: pts, class: 'continent-shelf' }, dom.layerContinents);
+          el('polygon', { points: pts, class: 'continent-shadow-base' }, dom.layerContinents);
+          const halo = el('polygon', {
+            points: pts, class: 'continent-halo', stroke: 'none', opacity: 0
+          }, dom.layerContinents);
+          svgRefs.continentHalos[c.id] = halo;
+
+          // Continent label + bonus pill
+          const lx = c.label ? c.label[0] : 0;
+          const ly = c.label ? c.label[1] : 0;
+          const cg = el('g', { transform: `translate(${lx}, ${ly})` }, dom.layerContLabels);
+          const nameEl = el('text', { x: 0, y: -4, class: 'cont-label-name' }, cg);
+          nameEl.textContent = c.name || c.short_name;
+          const pillBg = el('rect', {
+            x: -17, y: 3, width: 34, height: 15, rx: 7.5, class: 'cont-bonus-bg'
+          }, cg);
+          const pillText = el('text', { x: 0, y: 10.5, class: 'cont-bonus-text' }, cg);
+          pillText.textContent = `+${board.continent_bonus ?? 2}`;
+          svgRefs.continentBonusBgs[c.id] = pillBg;
+          svgRefs.continentBonusTexts[c.id] = pillText;
+        });
+
+        // 4. Territory Polygons & Troop Medallions
+        (board.territories || []).forEach((t) => {
+          const poly = el('polygon', {
+            points: pointsToAttr(t.outline),
+            class: 'territory-poly',
+            fill: '#233648',
+            'data-tid': t.id,
+          }, dom.layerTerritories);
+
+          const bindInteractive = (node) => {
+            node.addEventListener('mouseenter', (ev) => onTerritoryEnter(t.id, ev));
+            node.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
+            node.addEventListener('mouseleave', () => onTerritoryLeave(t.id));
+            node.addEventListener('click', (ev) => onTerritoryClick(t.id, ev));
+          };
+          bindInteractive(poly);
+          svgRefs.territories[t.id] = poly;
+
+          // Medallion at marker
+          const mx = t.marker ? t.marker[0] : 0;
+          const my = t.marker ? t.marker[1] : 0;
+          const mg = el('g', {
+            class: 'medallion-group',
+            transform: `translate(${mx}, ${my})`,
+            'data-tid': t.id,
+          }, dom.layerMedallions);
+
+          // #id micro-badge right above medallion
+          el('rect', {
+            x: -13, y: -25, width: 26, height: 12.5, rx: 4, class: 'medallion-id-bg'
+          }, mg);
+          const idTxt = el('text', { x: 0, y: -18.7, class: 'medallion-id-text' }, mg);
+          idTxt.textContent = `#${t.id}`;
+
+          // Troop pill
+          const pill = el('rect', {
+            x: -17, y: -11, width: 34, height: 22, rx: 11, class: 'medallion-pill', stroke: '#5ac7ef'
+          }, mg);
+          const troopsTxt = el('text', { x: 0, y: 0.3, class: 'medallion-troops' }, mg);
+          troopsTxt.textContent = '1';
+
+          bindInteractive(mg);
+          svgRefs.medallions[t.id] = { group: mg, pill, troopsTxt };
+        });
+      }
+
+      // ---------- Derived Gameplay Helpers ----------
+
+      function getAttackTargets(tid) {
+        if (tid === null || tid === undefined || !app.state?.attack_targets) return [];
+        return app.state.attack_targets[String(tid)] || [];
+      }
+
+      function getFortifyTargets(tid) {
+        if (tid === null || tid === undefined || !app.state?.fortify_targets) return [];
+        return app.state.fortify_targets[String(tid)] || [];
+      }
+
+      function getFortifyOptions(tid) {
+        const raw = app.state?.fortify_amounts?.[String(tid)] || [];
+        if (!raw.length) return [];
+        // Map each array index to its exact backend option index, deduplicating identical amounts
+        // while keeping the highest-priority label, sorted largest -> smallest for intuitive UI.
+        const maxVal = Math.max(...raw);
+        const minVal = Math.min(...raw);
+        const seen = new Set();
+        const items = [];
+        raw.forEach((amount, idx) => {
+          if (seen.has(amount)) return;
+          seen.add(amount);
+          let label = `${amount}`;
+          if (amount === maxVal && maxVal > 1) label = `All (${amount})`;
+          else if (amount === 1 && minVal === 1) label = `1`;
+          else label = `Half (${amount})`;
+          items.push({ option: idx, amount, label });
+        });
+        items.sort((a, b) => b.amount - a.amount);
+        return items;
+      }
+
+      function isTerritoryClickable(tid) {
+        const st = app.state;
+        if (!st || !st.human_turn || st.phase === 'ended') return false;
+        if (st.phase === 'reinforce') {
+          return Boolean(st.selectable?.[tid]);
+        }
+        if (st.phase === 'attack') {
+          if (app.selected !== null && getAttackTargets(app.selected).includes(tid)) return true;
+          return Boolean(st.selectable?.[tid]);
+        }
+        if (st.phase === 'fortify') {
+          if (app.selected !== null && getFortifyTargets(app.selected).includes(tid)) return true;
+          return Boolean(st.selectable?.[tid]);
+        }
+        return false;
+      }
+
+      function getActiveBattleHighlight() {
+        if (app.hoverBattle) return app.hoverBattle;
+        if (app.spotlightBattle && app.state?.phase !== 'ended') {
+          // Only highlight latest battle on board when it is fresh or hovered
+          if (app.diceAnimCancel) return app.spotlightBattle;
+        }
+        return null;
+      }
+
+      function computeArrowPath(srcId, dstId) {
+        const board = app.board;
+        const src = board.territories[srcId];
+        const dst = board.territories[dstId];
+        if (!src || !dst) return '';
+
+        const bridge = app.bridgeByPair.get(pairKey(srcId, dstId));
+        if (bridge && bridge.start && bridge.control && bridge.end) {
+          const forward = bridge.a === srcId;
+          const p0 = forward ? bridge.start : bridge.end;
+          const p1 = forward ? bridge.end : bridge.start;
+          return `M ${p0[0]} ${p0[1]} Q ${bridge.control[0]} ${bridge.control[1]} ${p1[0]} ${p1[1]}`;
+        }
+
+        const x1 = src.marker[0], y1 = src.marker[1];
+        const x2 = dst.marker[0], y2 = dst.marker[1];
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.hypot(dx, dy) || 1;
+        // Shorten ends slightly so arrowhead sits cleanly at medallion edge
+        const padStart = Math.min(18, dist * 0.2);
+        const padEnd = Math.min(22, dist * 0.25);
+        const sx = x1 + (dx / dist) * padStart;
+        const sy = y1 + (dy / dist) * padStart;
+        const ex = x2 - (dx / dist) * padEnd;
+        const ey = y2 - (dy / dist) * padEnd;
+        const bend = Math.min(34, dist * 0.19);
+        const cx = (sx + ex) / 2 - (dy / dist) * bend;
+        const cy = (sy + ey) / 2 + (dx / dist) * bend;
+        return `M ${sx.toFixed(1)} ${sy.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+      }
+
+      // ---------- SVG Board Rendering ----------
+
+      function renderBoard() {
+        const board = app.board;
+        const st = app.state;
+        if (!board || !st) return;
+
+        // Validate current selection against latest state
+        if (app.selected !== null) {
+          if (!st.human_turn || st.phase === 'reinforce' || st.phase === 'ended') {
+            app.selected = null;
+          } else if (st.phase === 'attack' && getAttackTargets(app.selected).length === 0) {
+            app.selected = null;
+          } else if (st.phase === 'fortify' && getFortifyTargets(app.selected).length === 0) {
+            app.selected = null;
+          }
+        }
+
+        const validAttackTargets = (st.human_turn && st.phase === 'attack' && app.selected !== null)
+          ? new Set(getAttackTargets(app.selected))
+          : new Set();
+        const validFortifyTargets = (st.human_turn && st.phase === 'fortify' && app.selected !== null)
+          ? new Set(getFortifyTargets(app.selected))
+          : new Set();
+
+        const activeBattle = getActiveBattleHighlight();
+
+        // Update continent control halos & bonus pills
+        (board.continents || []).forEach((c) => {
+          const owner = st.continent_owners?.[c.id];
+          const halo = svgRefs.continentHalos[c.id];
+          const pillBg = svgRefs.continentBonusBgs[c.id];
+          const pillTxt = svgRefs.continentBonusTexts[c.id];
+          if (owner !== null && owner !== undefined) {
+            const col = playerColor(owner);
+            halo.setAttribute('stroke', col);
+            halo.setAttribute('opacity', '1');
+            pillBg.setAttribute('fill', mixHex(col, '#0d1824', 0.65));
+            pillBg.setAttribute('stroke', col);
+            pillTxt.setAttribute('fill', '#ffffff');
+          } else {
+            halo.setAttribute('opacity', '0');
+            pillBg.setAttribute('fill', 'rgba(13, 24, 36, 0.9)');
+            pillBg.setAttribute('stroke', 'rgba(120, 155, 184, 0.45)');
+            pillTxt.setAttribute('fill', '#c6dcf0');
+          }
+        });
+
+        // Update territory polygons and medallions
+        dom.layerOverlays.innerHTML = '';
+
+        (board.territories || []).forEach((t) => {
+          const tid = t.id;
+          const owner = st.owner[tid];
+          const troops = st.troops[tid];
+          const clickable = isTerritoryClickable(tid);
+          const isHovered = app.hovered === tid;
+          const isSelected = app.selected === tid;
+          const isAtkTarget = validAttackTargets.has(tid);
+          const isFortTarget = validFortifyTargets.has(tid);
+
+          const poly = svgRefs.territories[tid];
+          let fill = territoryFill(tid, owner);
+          if (isSelected) fill = mixHex(playerColor(owner), '#ffffff', 0.14);
+          else if (isHovered && clickable) fill = mixHex(playerColor(owner), '#ffffff', 0.08);
+          poly.setAttribute('fill', fill);
+          poly.classList.toggle('clickable', clickable);
+          poly.classList.toggle('hovered', isHovered);
+
+          // Overlays for special borders (rendered above all base territory edges!)
+          const pts = pointsToAttr(t.outline);
+          if (st.changed?.[tid]) {
+            el('polygon', { points: pts, class: 'territory-overlay changed' }, dom.layerOverlays);
+          }
+          if (st.human_turn && st.selectable?.[tid] && !isSelected && !isAtkTarget && !isFortTarget) {
+            el('polygon', { points: pts, class: 'territory-overlay selectable' }, dom.layerOverlays);
+          }
+          if (isAtkTarget) {
+            el('polygon', { points: pts, class: 'territory-overlay target-attack' }, dom.layerOverlays);
+          }
+          if (isFortTarget) {
+            el('polygon', { points: pts, class: 'territory-overlay target-fortify' }, dom.layerOverlays);
+          }
+          if (activeBattle && activeBattle.source === tid) {
+            el('polygon', { points: pts, class: 'territory-overlay battle-src' }, dom.layerOverlays);
+          }
+          if (activeBattle && activeBattle.target === tid) {
+            el('polygon', { points: pts, class: 'territory-overlay battle-dst' }, dom.layerOverlays);
+          }
+          if (isSelected) {
+            el('polygon', { points: pts, class: 'territory-overlay selected-outer' }, dom.layerOverlays);
+            el('polygon', { points: pts, class: 'territory-overlay selected-inner' }, dom.layerOverlays);
+          }
+
+          // Medallion update
+          const med = svgRefs.medallions[tid];
+          const col = playerColor(owner);
+          med.pill.setAttribute('stroke', col);
+          const digits = String(troops).length;
+          const pillW = digits >= 3 ? 42 : 34;
+          med.pill.setAttribute('x', -pillW / 2);
+          med.pill.setAttribute('width', pillW);
+          med.troopsTxt.textContent = String(troops);
+          med.group.classList.toggle('clickable', clickable);
+          med.group.classList.toggle('selected', isSelected);
+          med.group.classList.toggle('hovered', isHovered);
+        });
+
+        // Update Sea Lanes (highlight when hovered, selected, targeted, or battle)
+        svgRefs.bridges.forEach(({ bridge, group }) => {
+          const involvesHover = app.hovered === bridge.a || app.hovered === bridge.b;
+          const involvesSelected = app.selected !== null && (
+            (app.selected === bridge.a && (validAttackTargets.has(bridge.b) || validFortifyTargets.has(bridge.b))) ||
+            (app.selected === bridge.b && (validAttackTargets.has(bridge.a) || validFortifyTargets.has(bridge.a)))
+          );
+          const involvesBattle = activeBattle && (
+            (activeBattle.source === bridge.a && activeBattle.target === bridge.b) ||
+            (activeBattle.source === bridge.b && activeBattle.target === bridge.a)
+          );
+          group.classList.toggle('active', Boolean(involvesHover || involvesSelected));
+          group.classList.toggle('battle', Boolean(involvesBattle));
+        });
+
+        // Tactical preview & battle arrows
+        dom.layerArrows.innerHTML = '';
+
+        // 1) Active / hovered battle arrow
+        if (activeBattle) {
+          const d = computeArrowPath(activeBattle.source, activeBattle.target);
+          if (d) {
+            el('path', { d, class: 'tactical-arrow-bg' }, dom.layerArrows);
+            el('path', {
+              d, class: 'battle-arrow',
+              stroke: activeBattle.captured ? '#f2c94c' : '#ff7b88',
+              'marker-end': activeBattle.captured ? 'url(#arrow-battle)' : 'url(#arrow-attack)',
+            }, dom.layerArrows);
+          }
+          const dstT = board.territories[activeBattle.target];
+          if (dstT?.marker) {
+            el('circle', {
+              cx: dstT.marker[0], cy: dstT.marker[1], r: 22, class: 'impact-ring'
+            }, dom.layerArrows);
+          }
+        }
+
+        // 2) Human tactical preview arrow (selected -> hovered valid target)
+        if (app.selected !== null && app.hovered !== null && app.hovered !== app.selected) {
+          const isAtk = validAttackTargets.has(app.hovered);
+          const isFort = validFortifyTargets.has(app.hovered);
+          if (isAtk || isFort) {
+            const d = computeArrowPath(app.selected, app.hovered);
+            el('path', { d, class: 'tactical-arrow-bg' }, dom.layerArrows);
+            el('path', {
+              d, class: 'tactical-arrow',
+              stroke: isAtk ? '#ff5b6c' : '#4ade80',
+              'marker-end': isAtk ? 'url(#arrow-attack)' : 'url(#arrow-fortify)',
+            }, dom.layerArrows);
+          }
+        }
+      }
+
+      // ---------- Popups & Capture Starburst FX ----------
+
+      function spawnPopups(popups) {
+        if (!Array.isArray(popups) || !popups.length || !app.board) return;
+        const perTerritory = new Map();
+        popups.forEach((p) => {
+          const t = app.board.territories[p.territory];
+          if (!t?.marker) return;
+          const idx = perTerritory.get(p.territory) || 0;
+          perTerritory.set(p.territory, idx + 1);
+
+          const x = t.marker[0];
+          const y = t.marker[1] - 24 - idx * 20;
+          const outer = el('g', { transform: `translate(${x}, ${y})` }, dom.layerPopups);
+          const anim = el('g', { class: 'popup-float' }, outer);
+
+          const textStr = String(p.text || '');
+          const w = Math.max(36, textStr.length * 7.6 + 14);
+          const col = p.color || '#f2c94c';
+          el('rect', {
+            x: -w / 2, y: -11, width: w, height: 22, rx: 11,
+            fill: 'rgba(10, 18, 28, 0.92)',
+            stroke: col,
+            'stroke-width': 1.5,
+          }, anim);
+          const txt = el('text', {
+            x: 0, y: 0.5,
+            fill: col,
+            'font-size': 11,
+            'font-weight': 800,
+            'font-family': 'var(--mono)',
+            'text-anchor': 'middle',
+            'dominant-baseline': 'central',
+          }, anim);
+          txt.textContent = textStr;
+
+          setTimeout(() => outer.remove(), 1450);
+        });
+      }
+
+      function spawnCaptureStarburst(tid) {
+        const t = app.board?.territories?.[tid];
+        if (!t?.marker) return;
+        const [x, y] = t.marker;
+        const g = el('g', { transform: `translate(${x}, ${y})` }, dom.layerPopups);
+        // 8-point golden star
+        const pts = [];
+        for (let i = 0; i < 16; i++) {
+          const r = i % 2 === 0 ? 30 : 12;
+          const a = (i * Math.PI) / 8;
+          pts.push(`${(Math.cos(a) * r).toFixed(1)},${(Math.sin(a) * r).toFixed(1)}`);
+        }
+        el('polygon', { points: pts.join(' '), class: 'capture-star' }, g);
+        setTimeout(() => g.remove(), 980);
+      }
+
+      // ---------- Hover Tooltip ----------
+
+      function onTerritoryEnter(tid, ev) {
+        app.hovered = tid;
+        renderBoard();
+        renderTooltip(tid);
+        positionTooltip(ev.clientX, ev.clientY);
+        dom.tooltip.classList.add('visible');
+      }
+
+      function onTerritoryLeave(tid) {
+        if (app.hovered === tid) {
+          app.hovered = null;
+          renderBoard();
+          dom.tooltip.classList.remove('visible');
+        }
+      }
+
+      function positionTooltip(clientX, clientY) {
+        app.lastMouse = { x: clientX, y: clientY };
+        const pad = 16;
+        const rect = dom.tooltip.getBoundingClientRect();
+        const w = rect.width || 240;
+        const h = rect.height || 160;
+        let left = clientX + pad;
+        let top = clientY + pad;
+        if (left + w > window.innerWidth - 10) left = clientX - w - pad;
+        if (top + h > window.innerHeight - 10) top = clientY - h - pad;
+        left = Math.max(8, left);
+        top = Math.max(8, top);
+        dom.tooltip.style.left = `${left}px`;
+        dom.tooltip.style.top = `${top}px`;
+      }
+
+      function renderTooltip(tid) {
+        const board = app.board;
+        const st = app.state;
+        if (!board || !st) return;
+        const t = board.territories[tid];
+        if (!t) return;
+        const cont = board.continents[t.continent];
+        const owner = st.owner[tid];
+        const ownerName = st.seat_labels?.[owner] || `P${owner + 1}`;
+        const ownerCol = playerColor(owner);
+        const troops = st.troops[tid];
+
+        const nbHtml = (t.neighbors || []).map((nid) => {
+          const nt = board.territories[nid];
+          const bridge = app.bridgeByPair.get(pairKey(tid, nid));
+          const sea = bridge ? `<span class="sea-tag">[${escHtml(bridge.label)}]</span>` : '';
+          return `<span class="tt-nb-chip">${sea}${escHtml(nt ? nt.name : `#${nid}`)}</span>`;
+        }).join('');
+
+        let hintText = '';
+        let hintCls = 'muted';
+        if (st.phase === 'ended') {
+          hintText = 'Match completed';
+        } else if (!st.human_turn) {
+          hintText = `Waiting for ${st.seat_labels?.[st.active] || 'AI'}...`;
+        } else if (st.phase === 'reinforce') {
+          if (st.selectable?.[tid]) {
+            const amt = app.reinforceBrush === 'all' ? st.pending : Math.min(app.reinforceBrush, st.pending);
+            hintText = `Click to deploy +${amt} · Shift+Click for all (${st.pending})`;
+            hintCls = '';
+          } else {
+            hintText = 'Enemy territory · Deploy to your own territories';
+          }
+        } else if (st.phase === 'attack') {
+          if (app.selected === tid) {
+            hintText = 'Selected attacker · Click again to deselect';
+            hintCls = '';
+          } else if (app.selected !== null && getAttackTargets(app.selected).includes(tid)) {
+            const srcName = board.territories[app.selected]?.name || `#${app.selected}`;
+            hintText = `Click to attack from ${srcName} · Shift+Click to Blitz!`;
+            hintCls = 'attack';
+          } else if (st.selectable?.[tid]) {
+            hintText = 'Click to select as attacking territory';
+            hintCls = '';
+          } else if (owner === st.active) {
+            hintText = troops <= 1 ? 'Needs 2+ troops to attack' : 'No adjacent enemy targets';
+          } else {
+            hintText = app.selected !== null ? 'Out of range from selected attacker' : 'Select an adjacent territory you own first';
+          }
+        } else if (st.phase === 'fortify') {
+          if (app.selected === tid) {
+            hintText = 'Selected source · Click again to deselect';
+            hintCls = '';
+          } else if (app.selected !== null && getFortifyTargets(app.selected).includes(tid)) {
+            const srcName = board.territories[app.selected]?.name || `#${app.selected}`;
+            const opts = getFortifyOptions(app.selected);
+            const cur = opts.find(o => o.option === app.fortifyOption) || opts[0];
+            hintText = `Click to fortify +${cur ? cur.amount : 1} from ${srcName}`;
+            hintCls = 'fortify';
+          } else if (st.selectable?.[tid]) {
+            hintText = 'Click to select fortify source';
+            hintCls = 'fortify';
+          } else {
+            hintText = owner === st.active ? 'No movable troops or connected allies' : 'Enemy territory';
+          }
+        }
+
+        dom.tooltip.innerHTML = `
+          <div class="tt-head">
+            <span class="tt-name">${escHtml(t.name)}</span>
+            <span class="tt-id">#${tid}</span>
+          </div>
+          <div class="tt-cont">${escHtml(cont ? (cont.short_name || cont.name) : '')}</div>
+          <div class="tt-owner-row">
+            <span class="tt-owner-left">
+              <span class="mini-dot" style="background:${ownerCol}; box-shadow:0 0 6px ${ownerCol};"></span>
+              <span>${escHtml(ownerName)}</span>
+            </span>
+            <span class="tt-troops">${troops} ${troops === 1 ? 'troop' : 'troops'}</span>
+          </div>
+          <div class="tt-neighbors-label">Borders &amp; Sea Lanes</div>
+          <div class="tt-neighbors">${nbHtml}</div>
+          <div class="tt-hint ${hintCls}">${escHtml(hintText)}</div>
+        `;
+      }
+
+      // ---------- Topbar & Action Bar Rendering ----------
+
+      function renderTopbar() {
+        const st = app.state;
+        if (!st) return;
+
+        dom.turnBadge.innerHTML = `Turn <strong>${st.turns}</strong> / ${st.max_turns}`;
+
+        const activeColor = st.phase === 'ended'
+          ? (st.winner !== null && st.winner !== undefined ? playerColor(st.winner) : '#f2c94c')
+          : playerColor(st.active);
+        const activeLabel = st.seat_labels?.[st.active] || `P${st.active + 1}`;
+        const prefix = st.human_turn ? 'YOU' : activeLabel.toUpperCase();
+
+        let text = '';
+        if (st.phase === 'reinforce') {
+          text = `${prefix} · REINFORCE (+${st.pending})`;
+        } else if (st.phase === 'attack') {
+          text = `${prefix} · ATTACK`;
+        } else if (st.phase === 'fortify') {
+          text = `${prefix} · FORTIFY`;
+        } else {
+          if (st.winner !== null && st.winner !== undefined) {
+            const winSeat = st.seats?.[st.winner];
+            const winLabel = st.seat_labels?.[st.winner] || `P${st.winner + 1}`;
+            text = winSeat?.kind === 'human' ? 'VICTORY · YOU WIN!' : `VICTORY · ${winLabel.toUpperCase()}`;
+          } else {
+            text = 'DRAW · MAX TURNS';
+          }
+        }
+
+        dom.phasePill.className = `phase-pill phase-${st.phase}`;
+        dom.phaseDot.style.background = activeColor;
+        dom.phaseDot.style.color = activeColor;
+        dom.phasePillText.textContent = text;
+
+        // Show Pause / Step only when AI is active
+        const aiActive = !st.human_turn && st.phase !== 'ended';
+        dom.btnPause.style.display = aiActive ? '' : 'none';
+        dom.btnStep.style.display = aiActive ? '' : 'none';
+        dom.btnPause.textContent = app.aiPaused ? 'Resume' : 'Pause';
+        dom.btnPause.classList.toggle('btn-paused', app.aiPaused);
+        dom.btnStep.disabled = app.inFlight;
+      }
+
+      function renderActionBar() {
+        const st = app.state;
+        const board = app.board;
+        if (!st || !board) return;
+
+        if (st.phase === 'ended') {
+          const hasWinner = st.winner !== null && st.winner !== undefined;
+          const winnerSeat = hasWinner ? st.seats?.[st.winner] : null;
+          const winnerName = hasWinner ? (st.seat_labels?.[st.winner] || `P${st.winner + 1}`) : 'Draw';
+          const headline = !hasWinner
+            ? `Match ended in a draw after ${st.turns} turns.`
+            : winnerSeat?.kind === 'human'
+              ? `Glorious victory! You conquered the map in ${st.turns} turns.`
+              : (st.has_human
+                ? `Defeat — ${winnerName} claimed the world on turn ${st.turns}.`
+                : `${winnerName} won the AI match in ${st.turns} turns.`);
+
+          dom.actionBar.innerHTML = `
+            <div class="action-left">
+              <span class="action-badge ended">${!hasWinner ? 'DRAW' : (winnerSeat?.kind === 'human' ? 'VICTORY' : 'DEFEAT')}</span>
+              <span class="action-info"><strong>${escHtml(headline)}</strong></span>
+            </div>
+            <div class="action-right">
+              <button type="button" class="btn btn-gold" id="act-play-again">Play Again</button>
+              <button type="button" class="btn btn-primary" id="act-change-policies">Change Policies</button>
+            </div>
+          `;
+          document.getElementById('act-play-again').addEventListener('click', restartMatch);
+          document.getElementById('act-change-policies').addEventListener('click', openSetupModal);
+          return;
+        }
+
+        if (!st.human_turn) {
+          const aiName = st.seat_labels?.[st.active] || `P${st.active + 1}`;
+          const aiCol = playerColor(st.active);
+          const confHtml = app.aiConfidence !== null && app.aiConfidence !== undefined
+            ? `<span class="metric-chip">Conf <b>${(app.aiConfidence * 100).toFixed(0)}%</b></span>`
+            : '';
+          const valVal = app.aiValueEst !== null && app.aiValueEst !== undefined
+            ? app.aiValueEst
+            : st.seat_values?.[st.active];
+          const valHtml = valVal !== null && valVal !== undefined
+            ? `<span class="metric-chip">V(s) <b>${valVal >= 0 ? '+' : ''}${valVal.toFixed(2)}</b></span>`
+            : '';
+          const skipLabel = st.has_human ? 'Skip to My Turn »' : 'Next Turn »';
+
+          dom.actionBar.innerHTML = `
+            <div class="action-left">
+              <span class="action-badge ai" style="border-color:${aiCol}; color:${aiCol};">${escHtml(aiName)}</span>
+              <span class="action-info">${escHtml(st.last_action_summary || 'Evaluating strategic options...')}</span>
+              ${confHtml}
+              ${valHtml}
+            </div>
+            <div class="action-right">
+              <button type="button" class="btn btn-primary" id="act-skip-ai" ${app.inFlight ? 'disabled' : ''}>${skipLabel}</button>
+            </div>
+          `;
+          document.getElementById('act-skip-ai').addEventListener('click', skipAi);
+          return;
+        }
+
+        // Human Reinforce
+        if (st.phase === 'reinforce') {
+          dom.actionBar.innerHTML = `
+            <div class="action-left">
+              <span class="action-badge reinforce">DEPLOY · ${st.pending} LEFT</span>
+              <span class="action-info">Click your territories to deploy · <strong>Shift+Click</strong> deploys all</span>
+            </div>
+            <div class="action-right">
+              <span class="control-label">Per Click</span>
+              <div class="seg" id="brush-seg">
+                <button type="button" data-brush="1" class="${app.reinforceBrush === 1 ? 'active' : ''}">+1</button>
+                <button type="button" data-brush="5" class="${app.reinforceBrush === 5 ? 'active' : ''}">+5</button>
+                <button type="button" data-brush="all" class="${app.reinforceBrush === 'all' ? 'active' : ''}">+All</button>
+              </div>
+            </div>
+          `;
+          dom.actionBar.querySelectorAll('#brush-seg button').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const v = btn.dataset.brush;
+              app.reinforceBrush = v === 'all' ? 'all' : Number(v);
+              renderActionBar();
+              if (app.hovered !== null) renderTooltip(app.hovered);
+            });
+          });
+          return;
+        }
+
+        // Human Attack
+        if (st.phase === 'attack') {
+          const selT = app.selected !== null ? board.territories[app.selected] : null;
+          const selTargets = app.selected !== null ? getAttackTargets(app.selected) : [];
+          const infoHtml = selT
+            ? `From <strong>${escHtml(selT.name)}</strong> (${st.troops[selT.id]} troops) · Click any glowing crimson target (${selTargets.length}) · <strong>Shift+Click</strong> to Blitz`
+            : `Select one of your territories with 2+ troops to launch an attack.`;
+
+          const canRepeat = Boolean(
+            app.lastHumanAttack &&
+            getAttackTargets(app.lastHumanAttack.source).includes(app.lastHumanAttack.target)
+          );
+          const repeatTargetName = canRepeat
+            ? (board.territories[app.lastHumanAttack.target]?.name || `#${app.lastHumanAttack.target}`)
+            : '';
+
+          dom.actionBar.innerHTML = `
+            <div class="action-left">
+              <span class="action-badge attack">ATTACK PHASE</span>
+              <span class="action-info">${infoHtml}</span>
+            </div>
+            <div class="action-right">
+              <span class="control-label">Dice</span>
+              <div class="seg" id="dice-pref-seg">
+                <button type="button" data-dice="max" class="${app.attackDicePref === 'max' ? 'active' : ''}">Max</button>
+                <button type="button" data-dice="3" class="${app.attackDicePref === 3 ? 'active' : ''}">3</button>
+                <button type="button" data-dice="2" class="${app.attackDicePref === 2 ? 'active' : ''}">2</button>
+                <button type="button" data-dice="1" class="${app.attackDicePref === 1 ? 'active' : ''}">1</button>
+              </div>
+              ${canRepeat ? `
+                <button type="button" class="btn btn-danger" id="act-roll-again" title="Repeat attack on ${escHtml(repeatTargetName)}">
+                  Roll Again <span class="kbd">Space</span>
+                </button>
+                <button type="button" class="btn btn-gold" id="act-blitz" title="Blitz ${escHtml(repeatTargetName)} until captured or exhausted">
+                  Blitz!
+                </button>
+              ` : ''}
+              <button type="button" class="btn btn-primary" id="act-end-attack">
+                End Attacks &rarr; <span class="kbd">E</span>
+              </button>
+            </div>
+          `;
+          dom.actionBar.querySelectorAll('#dice-pref-seg button').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const v = btn.dataset.dice;
+              app.attackDicePref = v === 'max' ? 'max' : Number(v);
+              renderActionBar();
+            });
+          });
+          if (canRepeat) {
+            document.getElementById('act-roll-again').addEventListener('click', () => {
+              executeHumanAttack(app.lastHumanAttack.source, app.lastHumanAttack.target);
+            });
+            document.getElementById('act-blitz').addEventListener('click', () => {
+              executeHumanBlitz(app.lastHumanAttack.source, app.lastHumanAttack.target);
+            });
+          }
+          document.getElementById('act-end-attack').addEventListener('click', finishAttack);
+          return;
+        }
+
+        // Human Fortify
+        if (st.phase === 'fortify') {
+          const selT = app.selected !== null ? board.territories[app.selected] : null;
+          const opts = app.selected !== null ? getFortifyOptions(app.selected) : [];
+          if (opts.length && !opts.some(o => o.option === app.fortifyOption)) {
+            app.fortifyOption = opts[0].option;
+          }
+          const infoHtml = selT
+            ? `From <strong>${escHtml(selT.name)}</strong> (${st.troops[selT.id]} troops) · Click a glowing green ally to transfer troops`
+            : `Optionally select a territory with 2+ troops to fortify a connected ally.`;
+
+          const optsHtml = opts.length
+            ? `<div class="seg" id="fortify-opt-seg">${opts.map(o =>
+                `<button type="button" data-opt="${o.option}" class="${app.fortifyOption === o.option ? 'active' : ''}">${escHtml(o.label)}</button>`
+              ).join('')}</div>`
+            : '';
+
+          dom.actionBar.innerHTML = `
+            <div class="action-left">
+              <span class="action-badge fortify">FORTIFY PHASE</span>
+              <span class="action-info">${infoHtml}</span>
+            </div>
+            <div class="action-right">
+              ${opts.length ? '<span class="control-label">Move</span>' : ''}
+              ${optsHtml}
+              <button type="button" class="btn btn-emerald" id="act-end-turn">
+                End Turn <span class="kbd">E</span>
+              </button>
+            </div>
+          `;
+          dom.actionBar.querySelectorAll('#fortify-opt-seg button').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              app.fortifyOption = Number(btn.dataset.opt);
+              renderActionBar();
+              if (app.hovered !== null) renderTooltip(app.hovered);
+            });
+          });
+          document.getElementById('act-end-turn').addEventListener('click', passFortify);
+        }
+      }
+
+      // ---------- Standings Card ----------
+
+      function seatSubtitle(seat, arch) {
+        if (!seat) return 'Unknown';
+        if (seat.kind === 'human') return 'Human Commander';
+        if (seat.kind === 'heuristic') return 'Heuristic Bot';
+        if (seat.kind === 'random') return 'Random Bot';
+        if (seat.kind === 'checkpoint') {
+          const samp = seat.sampling ? seat.sampling.charAt(0).toUpperCase() + seat.sampling.slice(1) : 'Balanced';
+          return arch ? `Policy · ${samp} · ${arch}` : `Policy · ${samp}`;
+        }
+        return seat.kind;
+      }
+
+      function renderStandings() {
+        const st = app.state;
+        const board = app.board;
+        if (!st || !board) return;
+
+        dom.gameNumLabel.textContent = `Game #${st.game_number || 1}`;
+        const n = st.players || (st.seats ? st.seats.length : 2);
+        const terrCounts = new Array(n).fill(0);
+        const troopCounts = new Array(n).fill(0);
+        const contCounts = new Array(n).fill(0);
+
+        (st.owner || []).forEach((p, tid) => {
+          if (p >= 0 && p < n) {
+            terrCounts[p]++;
+            troopCounts[p] += st.troops?.[tid] || 0;
+          }
+        });
+        (st.continent_owners || []).forEach((p) => {
+          if (p !== null && p !== undefined && p >= 0 && p < n) contCounts[p]++;
+        });
+
+        const bonus = board.continent_bonus ?? 2;
+        const rows = [];
+        for (let p = 0; p < n; p++) {
+          const col = playerColor(p);
+          const elim = terrCounts[p] === 0;
+          const isActive = st.phase !== 'ended' && st.active === p;
+          const isWinner = st.phase === 'ended' && st.winner === p;
+          const income = elim ? 0 : Math.max(3, Math.floor(terrCounts[p] / 3)) + contCounts[p] * bonus;
+          const label = st.seat_labels?.[p] || `P${p + 1}`;
+          const sub = seatSubtitle(st.seats?.[p], st.seat_archs?.[p]);
+          const v = st.seat_values?.[p];
+          let vHtml = '';
+          if (v !== null && v !== undefined) {
+            const vCls = v > 0.04 ? 'pos' : (v < -0.04 ? 'neg' : '');
+            vHtml = `<span class="v-badge ${vCls}" title="Policy critic value estimate V(s)">${v >= 0 ? '+' : ''}${v.toFixed(2)}</span>`;
+          }
+
+          rows.push(`
+            <div class="player-row ${isActive || isWinner ? 'active' : ''} ${elim ? 'eliminated' : ''}" style="--player-color:${col};">
+              <span class="player-swatch" style="background:${col}; color:${col};"></span>
+              <div class="player-meta">
+                <div class="player-name-row">
+                  <span class="player-name">${escHtml(label)}${isWinner ? ' ★' : ''}</span>
+                </div>
+                <div class="player-sub">${escHtml(sub)}</div>
+              </div>
+              <div class="player-stats">
+                <div class="stat-pill tabular">
+                  <span class="stat-main">${terrCounts[p]}T · ${troopCounts[p]}</span>
+                  <span class="stat-sub">${elim ? 'OUT' : `+${income}/t`}</span>
+                </div>
+                ${vHtml}
+              </div>
+            </div>
+          `);
+        }
+        dom.standingsList.innerHTML = rows.join('');
+      }
+
+      // ---------- 3D Beveled SVG Dice & Animated Live Dice Arena ----------
+
+      const PIP_COORDS = {
+        1: [[24, 24]],
+        2: [[14, 14], [34, 34]],
+        3: [[14, 14], [24, 24], [34, 34]],
+        4: [[14, 14], [34, 14], [14, 34], [34, 34]],
+        5: [[14, 14], [34, 14], [24, 24], [14, 34], [34, 34]],
+        6: [[14, 13], [34, 13], [14, 24], [34, 24], [14, 35], [34, 35]],
+      };
+
+      function buildDieSvg(value, variant = 'atk', size = 46, uid = '') {
+        const val = Math.max(1, Math.min(6, Math.round(value || 1)));
+        const isAtk = variant === 'atk';
+        const gradId = `dg-${variant}-${uid}`;
+        const cTop = isAtk ? '#e84c5b' : '#4fa3e6';
+        const cBot = isAtk ? '#8f1b29' : '#1d5182';
+        const rim = isAtk ? '#ff939d' : '#96d0ff';
+        const pipShadow = isAtk ? 'rgba(65, 5, 14, 0.55)' : 'rgba(8, 30, 58, 0.55)';
+        const pips = (PIP_COORDS[val] || PIP_COORDS[1]).map(([cx, cy]) => `
+          <circle cx="${cx}" cy="${cy + 0.8}" r="4.1" fill="${pipShadow}"/>
+          <circle cx="${cx}" cy="${cy}" r="3.9" fill="#f9fcff"/>
+        `).join('');
+
+        return `
+          <svg class="${size <= 22 ? 'mini-die' : 'die-svg'}" viewBox="0 0 48 48" width="${size}" height="${size}">
+            <defs>
+              <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="${cTop}"/>
+                <stop offset="100%" stop-color="${cBot}"/>
+              </linearGradient>
+            </defs>
+            <rect x="2.5" y="2.5" width="43" height="43" rx="10" fill="url(#${gradId})" stroke="${rim}" stroke-opacity="0.55" stroke-width="1.6"/>
+            <path d="M11 4.5 H37 A6.5 6.5 0 0 1 43.5 11 V18 Q24 23 4.5 18 V11 A6.5 6.5 0 0 1 11 4.5 Z" fill="rgba(255,255,255,0.16)"/>
+            ${pips}
+          </svg>
+        `;
+      }
+
+      function renderDiceArenaStatic(battle, rollingState = null) {
+        if (!battle) {
+          dom.diceTurnLabel.textContent = '—';
+          dom.diceArenaBody.innerHTML = `<div class="dice-empty-note">Awaiting first clash...</div>`;
+          return;
+        }
+
+        const board = app.board;
+        const srcName = board?.territories?.[battle.source]?.name || `#${battle.source}`;
+        const dstName = board?.territories?.[battle.target]?.name || `#${battle.target}`;
+        const atkCol = playerColor(battle.attacker);
+        const defCol = playerColor(battle.defender);
+
+        dom.diceTurnLabel.textContent = `Turn ${battle.turn}`;
+
+        const atkRolls = battle.attack_rolls || [];
+        const defRolls = battle.defense_rolls || [];
+        const pairCount = Math.min(atkRolls.length, defRolls.length);
+
+        const isRolling = Boolean(rollingState && !rollingState.done);
+
+        let statusText = 'CLASH';
+        let statusCls = 'clash';
+        if (isRolling) {
+          statusText = 'ROLLING...';
+          statusCls = 'rolling';
+        } else if (battle.captured) {
+          statusText = 'CAPTURED!';
+          statusCls = 'captured';
+        } else if ((battle.defender_losses || 0) === 0) {
+          statusText = 'HELD';
+          statusCls = 'held';
+        }
+
+        const atkRowHtml = [0, 1, 2].map((i) => {
+          if (i >= atkRolls.length) return `<div class="die-slot empty"></div>`;
+          const face = rollingState ? rollingState.atkFaces[i] : atkRolls[i];
+          const locked = !rollingState || rollingState.atkLocked[i];
+          const pairDone = !rollingState || (i < pairCount && rollingState.atkLocked[i] && rollingState.defLocked[i]);
+          let cls = '';
+          let style = '';
+          if (rollingState && !locked) {
+            const tr = rollingState.atkTransforms[i] || '';
+            style = `transform:${tr};`;
+          } else if (rollingState && rollingState.atkSnap[i]) {
+            cls = 'snap';
+          }
+          if (pairDone && i < pairCount) {
+            const atkWins = atkRolls[i] > defRolls[i];
+            cls += atkWins ? ' winner' : ' loser';
+            if (atkWins) style += `--win-glow:${atkCol};`;
+          } else if (!isRolling && i >= pairCount) {
+            cls += ' unpaired';
+          }
+          return `<div class="die-slot ${cls}" style="${style}">${buildDieSvg(face, 'atk', 46, `a${i}`)}</div>`;
+        }).join('');
+
+        const midRowHtml = [0, 1, 2].map((i) => {
+          if (i >= pairCount) return `<span class="die-compare none">—</span>`;
+          const pairDone = !rollingState || (rollingState.atkLocked[i] && rollingState.defLocked[i]);
+          if (!pairDone) return `<span class="die-compare rolling">···</span>`;
+          const a = atkRolls[i];
+          const d = defRolls[i];
+          if (a > d) {
+            return `<span class="die-compare atk-win">▲ WIN</span>`;
+          }
+          const isTie = a === d;
+          return `<span class="die-compare def-win" title="${isTie ? 'Tie goes to defender' : 'Defender rolled higher'}">${isTie ? '▼ TIE' : '▼ DEF'}</span>`;
+        }).join('');
+
+        const defRowHtml = [0, 1, 2].map((i) => {
+          if (i >= defRolls.length) return `<div class="die-slot empty"></div>`;
+          const face = rollingState ? rollingState.defFaces[i] : defRolls[i];
+          const locked = !rollingState || rollingState.defLocked[i];
+          const pairDone = !rollingState || (i < pairCount && rollingState.atkLocked[i] && rollingState.defLocked[i]);
+          let cls = '';
+          let style = '';
+          if (rollingState && !locked) {
+            const tr = rollingState.defTransforms[i] || '';
+            style = `transform:${tr};`;
+          } else if (rollingState && rollingState.defSnap[i]) {
+            cls = 'snap';
+          }
+          if (pairDone && i < pairCount) {
+            const defWins = defRolls[i] >= atkRolls[i];
+            cls += defWins ? ' winner' : ' loser';
+            if (defWins) style += `--win-glow:${defCol};`;
+          }
+          return `<div class="die-slot ${cls}" style="${style}">${buildDieSvg(face, 'def', 46, `d${i}`)}</div>`;
+        }).join('');
+
+        const footerLeft = isRolling
+          ? 'Comparing highest dice...'
+          : `Losses: <strong style="color:#ff9ba3;">-${battle.attacker_losses} ATK</strong> · <strong style="color:#8ccbff;">-${battle.defender_losses} DEF</strong>`;
+        const footerRight = isRolling
+          ? ''
+          : `${battle.attacker_troops_after} → ${battle.defender_troops_after}`;
+
+        dom.diceArenaBody.innerHTML = `
+          <div class="dice-matchup">
+            <div class="dice-route">
+              <span class="mini-dot" style="background:${atkCol};"></span>
+              <span class="dice-route-name" title="${escHtml(srcName)}">${escHtml(srcName)}</span>
+              <span style="color:var(--text-dim);">&rarr;</span>
+              <span class="mini-dot" style="background:${defCol};"></span>
+              <span class="dice-route-name" title="${escHtml(dstName)}">${escHtml(dstName)}</span>
+            </div>
+            <span class="dice-status-pill ${statusCls}">${statusText}</span>
+          </div>
+          <div class="dice-grid">
+            ${atkRowHtml}
+            ${midRowHtml}
+            ${defRowHtml}
+          </div>
+          <div class="dice-footer mono">
+            <span>${footerLeft}</span>
+            <span>${escHtml(footerRight)}</span>
+          </div>
+        `;
+      }
+
+      function cancelDiceAnimation() {
+        if (app.diceAnimCancel) {
+          app.diceAnimCancel();
+          app.diceAnimCancel = null;
+        }
+      }
+
+      function animateBattleDice(battle, speedMode = 'normal') {
+        cancelDiceAnimation();
+        app.spotlightBattle = battle;
+
+        if (!battle) {
+          renderDiceArenaStatic(null);
+          app.diceAnimPromise = Promise.resolve();
+          return app.diceAnimPromise;
+        }
+
+        if (speedMode === 'instant') {
+          renderDiceArenaStatic(battle, null);
+          if (battle.captured) spawnCaptureStarburst(battle.target);
+          app.diceAnimPromise = Promise.resolve();
+          return app.diceAnimPromise;
+        }
+
+        const scale = speedMode === 'fast' ? 0.34 : 1.0;
+        const atkLockAt = [250 * scale, 330 * scale, 410 * scale];
+        const defLockAt = [360 * scale, 460 * scale, 520 * scale];
+        const totalMs = 560 * scale;
+
+        const atkRolls = battle.attack_rolls || [];
+        const defRolls = battle.defense_rolls || [];
+        const state = {
+          done: false,
+          atkFaces: atkRolls.map(() => 1 + Math.floor(Math.random() * 6)),
+          defFaces: defRolls.map(() => 1 + Math.floor(Math.random() * 6)),
+          atkLocked: atkRolls.map(() => false),
+          defLocked: defRolls.map(() => false),
+          atkSnap: atkRolls.map(() => false),
+          defSnap: defRolls.map(() => false),
+          atkTransforms: atkRolls.map(() => ''),
+          defTransforms: defRolls.map(() => ''),
+        };
+
+        let cancelled = false;
+        let rafId = null;
+        const startTime = performance.now();
+        let lastShuffle = 0;
+
+        app.diceAnimPromise = new Promise((resolve) => {
+          const finish = () => {
+            app.diceAnimCancel = null;
+            renderDiceArenaStatic(battle, null);
+            if (battle.captured && !cancelled) spawnCaptureStarburst(battle.target);
+            renderBoard();
+            resolve();
+          };
+
+          app.diceAnimCancel = () => {
+            cancelled = true;
+            if (rafId) cancelAnimationFrame(rafId);
+            app.diceAnimCancel = null;
+            renderDiceArenaStatic(battle, null);
+            resolve();
+          };
+
+          const tick = (now) => {
+            if (cancelled) return;
+            const elapsed = now - startTime;
+            const doShuffle = now - lastShuffle >= 42;
+            if (doShuffle) lastShuffle = now;
+
+            atkRolls.forEach((finalVal, i) => {
+              state.atkSnap[i] = false;
+              if (elapsed >= atkLockAt[i]) {
+                if (!state.atkLocked[i]) {
+                  state.atkLocked[i] = true;
+                  state.atkSnap[i] = true;
+                  state.atkFaces[i] = finalVal;
+                  state.atkTransforms[i] = '';
+                }
+              } else {
+                const remain = 1 - elapsed / atkLockAt[i];
+                if (doShuffle) state.atkFaces[i] = 1 + Math.floor(Math.random() * 6);
+                const bounce = -Math.abs(Math.sin(elapsed * 0.045 + i * 1.4)) * 9 * remain;
+                const rot = Math.sin(elapsed * 0.06 + i * 2.1) * 16 * remain;
+                state.atkTransforms[i] = `translateY(${bounce.toFixed(1)}px) rotate(${rot.toFixed(1)}deg)`;
+              }
+            });
+
+            defRolls.forEach((finalVal, i) => {
+              state.defSnap[i] = false;
+              if (elapsed >= defLockAt[i]) {
+                if (!state.defLocked[i]) {
+                  state.defLocked[i] = true;
+                  state.defSnap[i] = true;
+                  state.defFaces[i] = finalVal;
+                  state.defTransforms[i] = '';
+                }
+              } else {
+                const remain = 1 - elapsed / defLockAt[i];
+                if (doShuffle) state.defFaces[i] = 1 + Math.floor(Math.random() * 6);
+                const bounce = -Math.abs(Math.sin(elapsed * 0.048 + i * 1.9 + 0.7)) * 9 * remain;
+                const rot = Math.cos(elapsed * 0.058 + i * 2.4) * 16 * remain;
+                state.defTransforms[i] = `translateY(${bounce.toFixed(1)}px) rotate(${rot.toFixed(1)}deg)`;
+              }
+            });
+
+            if (elapsed >= totalMs) {
+              state.done = true;
+              finish();
+              return;
+            }
+
+            renderDiceArenaStatic(battle, state);
+            rafId = requestAnimationFrame(tick);
+          };
+
+          renderBoard();
+          rafId = requestAnimationFrame(tick);
+        });
+
+        return app.diceAnimPromise;
+      }
+
+      // ---------- Chronological Battle Log ----------
+
+      function renderBattleLog() {
+        const st = app.state;
+        const board = app.board;
+        const battles = (st?.battles || []).slice(-50).reverse();
+        dom.battleCountLabel.textContent = `${battles.length} ${battles.length === 1 ? 'clash' : 'clashes'}`;
+
+        if (!battles.length) {
+          dom.battleLogList.innerHTML = `<div class="dice-empty-note">No battles recorded yet.</div>`;
+          return;
+        }
+
+        dom.battleLogList.innerHTML = battles.map((b) => {
+          const srcName = board?.territories?.[b.source]?.name || `#${b.source}`;
+          const dstName = board?.territories?.[b.target]?.name || `#${b.target}`;
+          const atkCol = playerColor(b.attacker);
+          const defCol = playerColor(b.defender);
+          const atkDice = (b.attack_rolls || []).map((v, i) => buildDieSvg(v, 'atk', 18, `la${b.id}_${i}`)).join('');
+          const defDice = (b.defense_rolls || []).map((v, i) => buildDieSvg(v, 'def', 18, `ld${b.id}_${i}`)).join('');
+          const outcome = b.captured
+            ? `<span class="outcome-tag captured">CAPTURED</span>`
+            : `<span class="outcome-tag casualties">-${b.attacker_losses} / -${b.defender_losses}</span>`;
+          const pinnedCls = app.pinnedBattleId === b.id ? 'pinned' : '';
+
+          return `
+            <div class="battle-card ${pinnedCls}" data-bid="${b.id}">
+              <div class="battle-card-top">
+                <div class="battle-card-route">
+                  <span class="mini-dot" style="background:${atkCol};"></span>
+                  <span>${escHtml(srcName)}</span>
+                  <span style="color:var(--text-dim);">&rarr;</span>
+                  <span class="mini-dot" style="background:${defCol};"></span>
+                  <span>${escHtml(dstName)}</span>
+                </div>
+                <span class="battle-card-turn">T${b.turn}</span>
+              </div>
+              <div class="battle-card-bottom">
+                <div class="mini-dice-row">
+                  ${atkDice}
+                  <span class="mini-vs">vs</span>
+                  ${defDice}
+                </div>
+                ${outcome}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const byId = new Map(battles.map(b => [String(b.id), b]));
+        dom.battleLogList.querySelectorAll('.battle-card').forEach((card) => {
+          const b = byId.get(card.dataset.bid);
+          if (!b) return;
+          card.addEventListener('mouseenter', () => {
+            app.hoverBattle = b;
+            renderBoard();
+          });
+          card.addEventListener('mouseleave', () => {
+            if (app.hoverBattle === b) {
+              app.hoverBattle = null;
+              renderBoard();
+            }
+          });
+          card.addEventListener('click', () => {
+            cancelDiceAnimation();
+            app.pinnedBattleId = b.id;
+            app.spotlightBattle = b;
+            renderDiceArenaStatic(b, null);
+            renderBattleLog();
+          });
+        });
+      }
+
+      // ---------- Unified State Application ----------
+
+      function applyStateResponse(resp, { animateMode = 'normal', fromHumanAttack = null } = {}) {
+        const prevState = app.state;
+        const st = resp.state || resp;
+        app.state = st;
+
+        if (resp.confidence !== undefined) app.aiConfidence = resp.confidence;
+        if (resp.value_estimate !== undefined) app.aiValueEst = resp.value_estimate;
+        if (st.human_turn) {
+          app.aiConfidence = null;
+          app.aiValueEst = null;
+        }
+
+        // Clear stale human selection when phase/turn changes
+        if (!prevState || prevState.active !== st.active || prevState.phase !== st.phase || prevState.game_number !== st.game_number) {
+          app.selected = null;
+          app.lastHumanAttack = null;
+        }
+
+        // Smooth human attack chaining
+        if (fromHumanAttack && st.human_turn && st.phase === 'attack') {
+          const { source, target } = fromHumanAttack;
+          const captured = st.owner[target] === st.active;
+          if (captured) {
+            app.lastHumanAttack = null;
+            if (getAttackTargets(target).length > 0) {
+              app.selected = target;
+            } else if (getAttackTargets(source).length > 0) {
+              app.selected = source;
+            } else {
+              app.selected = null;
+            }
+          } else {
+            if (getAttackTargets(source).includes(target)) {
+              app.selected = source;
+              app.lastHumanAttack = { source, target };
+            } else {
+              app.lastHumanAttack = null;
+              app.selected = getAttackTargets(source).length > 0 ? source : null;
+            }
+          }
+        }
+
+        // Popups
+        if (resp.popups?.length) {
+          spawnPopups(resp.popups);
+        }
+
+        // Battles & Dice Arena
+        const newBattles = resp.new_battles || [];
+        if (newBattles.length > 0) {
+          const latest = newBattles[newBattles.length - 1];
+          app.lastBattleIdSeen = latest.id;
+          app.pinnedBattleId = null;
+          animateBattleDice(latest, animateMode);
+        } else if (st.battles?.length) {
+          const latest = st.battles[st.battles.length - 1];
+          if (latest.id !== app.lastBattleIdSeen) {
+            app.lastBattleIdSeen = latest.id;
+            app.spotlightBattle = latest;
+            renderDiceArenaStatic(latest, null);
+          }
+        } else {
+          app.lastBattleIdSeen = null;
+          app.spotlightBattle = null;
+          cancelDiceAnimation();
+          renderDiceArenaStatic(null);
+        }
+
+        renderAll();
+      }
+
+      function renderAll() {
+        renderTopbar();
+        renderBoard();
+        renderActionBar();
+        renderStandings();
+        renderBattleLog();
+        if (app.hovered !== null) renderTooltip(app.hovered);
+      }
+
+      // ---------- Human Actions ----------
+
+      async function onTerritoryClick(tid, ev) {
+        const st = app.state;
+        if (!st || !st.human_turn || st.phase === 'ended' || app.inFlight) return;
+
+        if (st.phase === 'reinforce') {
+          if (!st.selectable?.[tid]) return;
+          const count = (ev.shiftKey || app.reinforceBrush === 'all')
+            ? st.pending
+            : Math.min(app.reinforceBrush, st.pending);
+          await sendHumanAction({ type: 'place', territory: tid, count });
+          return;
+        }
+
+        if (st.phase === 'attack') {
+          if (app.selected === tid) {
+            app.selected = null;
+            renderAll();
+            return;
+          }
+          if (app.selected !== null && getAttackTargets(app.selected).includes(tid)) {
+            if (ev.shiftKey) {
+              await executeHumanBlitz(app.selected, tid);
+            } else {
+              await executeHumanAttack(app.selected, tid);
+            }
+            return;
+          }
+          if (st.selectable?.[tid]) {
+            app.selected = tid;
+            renderAll();
+          }
+          return;
+        }
+
+        if (st.phase === 'fortify') {
+          if (app.selected === tid) {
+            app.selected = null;
+            renderAll();
+            return;
+          }
+          // Check valid fortify targets BEFORE selectable so clicking an owned ally executes fortify!
+          if (app.selected !== null && getFortifyTargets(app.selected).includes(tid)) {
+            const opts = getFortifyOptions(app.selected);
+            const chosen = opts.find(o => o.option === app.fortifyOption) || opts[0];
+            const optIdx = chosen ? chosen.option : 0;
+            await sendHumanAction({ type: 'fortify', source: app.selected, target: tid, option: optIdx });
+            return;
+          }
+          if (st.selectable?.[tid]) {
+            app.selected = tid;
+            const opts = getFortifyOptions(tid);
+            app.fortifyOption = opts.length ? opts[0].option : 0;
+            renderAll();
+          }
+        }
+      }
+
+      async function executeHumanAttack(source, target) {
+        const st = app.state;
+        if (!st || app.inFlight) return;
+        const maxAvail = Math.max(1, Math.min(3, (st.troops[source] || 2) - 1));
+        const dice = app.attackDicePref === 'max' ? maxAvail : Math.min(app.attackDicePref, maxAvail);
+        await sendHumanAction(
+          { type: 'attack', source, target, dice },
+          { fromHumanAttack: { source, target }, animateMode: 'normal' }
+        );
+      }
+
+      async function executeHumanBlitz(source, target) {
+        if (!app.state || app.inFlight) return;
+        await sendHumanAction(
+          { type: 'blitz', source, target, dice_pref: app.attackDicePref },
+          { fromHumanAttack: { source, target }, animateMode: 'fast' }
+        );
+      }
+
+      async function finishAttack() {
+        if (!app.state?.human_turn || app.state.phase !== 'attack' || app.inFlight) return;
+        await sendHumanAction({ type: 'finish_attack' });
+      }
+
+      async function passFortify() {
+        if (!app.state?.human_turn || app.state.phase !== 'fortify' || app.inFlight) return;
+        await sendHumanAction({ type: 'pass_fortify' });
+      }
+
+      async function sendHumanAction(payload, opts = {}) {
+        if (app.inFlight) return;
+        app.inFlight = true;
+        try {
+          const resp = await apiPost('/api/action', payload);
+          if (resp.ok === false) {
+            showToast(resp.error || 'Action rejected', true);
+            return;
+          }
+          applyStateResponse(resp, opts);
+          maybeScheduleAi();
+        } catch (err) {
+          showToast(err.message || 'Action failed', true);
+        } finally {
+          app.inFlight = false;
+          renderTopbar();
+        }
+      }
+
+      // ---------- AI Playback Loop ----------
+
+      function stopAiLoop() {
+        app.aiLoopToken++;
+        if (app.aiTimerId) {
+          clearTimeout(app.aiTimerId);
+          app.aiTimerId = null;
+        }
+      }
+
+      function maybeScheduleAi() {
+        stopAiLoop();
+        const st = app.state;
+        if (!st || st.phase === 'ended' || st.human_turn || app.aiPaused || app.setupOpen) {
+          return;
+        }
+        const token = app.aiLoopToken;
+        runAiLoop(token);
+      }
+
+      function sleepCancelable(ms, token) {
+        return new Promise((resolve) => {
+          if (token !== app.aiLoopToken) { resolve(false); return; }
+          app.aiTimerId = setTimeout(() => {
+            app.aiTimerId = null;
+            resolve(token === app.aiLoopToken);
+          }, ms);
+        });
+      }
+
+      async function runAiLoop(token) {
+        while (token === app.aiLoopToken) {
+          const st = app.state;
+          if (!st || st.phase === 'ended' || st.human_turn || app.aiPaused || app.setupOpen) return;
+          if (app.inFlight) {
+            const ok = await sleepCancelable(60, token);
+            if (!ok) return;
+            continue;
+          }
+
+          app.inFlight = true;
+          let resp = null;
+          const mode = app.aiSpeed === 'instant'
+            ? (st.has_human ? 'to_human' : 'turn')
+            : 'step';
+          try {
+            resp = await apiPost('/api/ai_step', { mode });
+          } catch (err) {
+            app.inFlight = false;
+            showToast(err.message || 'AI step failed', true);
+            app.aiPaused = true;
+            renderTopbar();
+            return;
+          }
+          app.inFlight = false;
+
+          if (token !== app.aiLoopToken) {
+            if (resp?.state) applyStateResponse(resp, { animateMode: 'instant' });
+            return;
+          }
+
+          if (resp.ok === false) {
+            showToast(resp.error || 'AI error', true);
+            app.aiPaused = true;
+            renderTopbar();
+            return;
+          }
+
+          const animMode = app.aiSpeed === 'instant'
+            ? 'instant'
+            : (app.aiSpeed === 'fast' ? 'fast' : 'normal');
+          applyStateResponse(resp, { animateMode: animMode });
+
+          if (!app.state || app.state.phase === 'ended' || app.state.human_turn) {
+            return;
+          }
+
+          // Wait for dice roll animation to settle in Slow / Normal modes
+          const hadBattle = (resp.new_battles?.length || 0) > 0;
+          if (hadBattle && (app.aiSpeed === 'slow' || app.aiSpeed === 'normal')) {
+            await app.diceAnimPromise;
+            if (token !== app.aiLoopToken) return;
+          }
+
+          let delay = 75;
+          if (app.aiSpeed === 'slow') delay = hadBattle ? 220 : 150;
+          else if (app.aiSpeed === 'normal') delay = hadBattle ? 80 : 75;
+          else if (app.aiSpeed === 'fast') delay = hadBattle ? 130 : 25;
+          else if (app.aiSpeed === 'instant') delay = 220;
+
+          const cont = await sleepCancelable(delay, token);
+          if (!cont) return;
+        }
+      }
+
+      async function stepAiOnce() {
+        const st = app.state;
+        if (!st || st.phase === 'ended' || st.human_turn || app.inFlight) return;
+        stopAiLoop();
+        app.aiPaused = true;
+        app.inFlight = true;
+        renderTopbar();
+        try {
+          const resp = await apiPost('/api/ai_step', { mode: 'step' });
+          if (resp.ok !== false) {
+            applyStateResponse(resp, { animateMode: app.aiSpeed === 'instant' ? 'instant' : 'normal' });
+          } else {
+            showToast(resp.error || 'AI step failed', true);
+          }
+        } catch (err) {
+          showToast(err.message || 'AI step failed', true);
+        } finally {
+          app.inFlight = false;
+          renderTopbar();
+        }
+      }
+
+      async function skipAi() {
+        const st = app.state;
+        if (!st || st.phase === 'ended' || st.human_turn || app.inFlight) return;
+        stopAiLoop();
+        cancelDiceAnimation();
+        app.inFlight = true;
+        renderActionBar();
+        try {
+          const mode = st.has_human ? 'to_human' : 'turn';
+          const resp = await apiPost('/api/ai_step', { mode });
+          if (resp.ok !== false) {
+            applyStateResponse(resp, { animateMode: 'instant' });
+            maybeScheduleAi();
+          } else {
+            showToast(resp.error || 'Skip failed', true);
+          }
+        } catch (err) {
+          showToast(err.message || 'Skip failed', true);
+        } finally {
+          app.inFlight = false;
+          renderTopbar();
+          renderActionBar();
+        }
+      }
+
+      function toggleAiPause() {
+        if (!app.state || app.state.human_turn || app.state.phase === 'ended') return;
+        app.aiPaused = !app.aiPaused;
+        renderTopbar();
+        if (app.aiPaused) stopAiLoop();
+        else maybeScheduleAi();
+      }
+
+      async function restartMatch() {
+        if (!app.state || app.inFlight) return;
+        stopAiLoop();
+        cancelDiceAnimation();
+        app.inFlight = true;
+        try {
+          const resp = await apiPost('/api/new_game', {
+            seats: app.state.seats,
+            max_turns: app.state.max_turns || 500,
+            seed: null,
+          });
+          if (resp.ok === false) {
+            showToast(resp.error || 'Could not restart match', true);
+            return;
+          }
+          app.aiPaused = false;
+          app.selected = null;
+          app.lastHumanAttack = null;
+          app.pinnedBattleId = null;
+          app.hoverBattle = null;
+          applyStateResponse(resp, { animateMode: 'instant' });
+          showToast('Started fresh match');
+          maybeScheduleAi();
+        } catch (err) {
+          showToast(err.message || 'Restart failed', true);
+        } finally {
+          app.inFlight = false;
+          renderTopbar();
+        }
+      }
+
+      // ---------- Match Setup Modal ----------
+
+      function sortedCheckpoints() {
+        return [...app.checkpoints].sort((a, b) => {
+          const ea = a.elo ?? -Infinity;
+          const eb = b.elo ?? -Infinity;
+          if (ea !== eb) return eb - ea;
+          return (b.update ?? 0) - (a.update ?? 0);
+        });
+      }
+
+      function makeAiSeat(rankIdx = 0) {
+        const cps = sortedCheckpoints();
+        if (cps.length > 0) {
+          const cp = cps[rankIdx % cps.length];
+          return {
+            kind: 'checkpoint',
+            path: cp.path,
+            label: cp.display_name || cp.file_stem || 'Policy',
+            sampling: 'balanced',
+          };
+        }
+        return { kind: 'heuristic' };
+      }
+
+      function openSetupModal() {
+        stopAiLoop();
+        app.setupOpen = true;
+        app.draftSeats = (app.state?.seats || [{ kind: 'human' }, makeAiSeat(0)]).map(s => ({ ...s }));
+        app.draftMaxTurns = app.state?.max_turns || 500;
+        dom.setupMaxTurns.value = app.draftMaxTurns;
+        dom.setupSeed.value = app.draftSeed;
+        renderSetupModal();
+        dom.setupModal.classList.add('open');
+        dom.setupModal.setAttribute('aria-hidden', 'false');
+        refreshCheckpoints(false);
+      }
+
+      function closeSetupModal() {
+        app.setupOpen = false;
+        dom.setupModal.classList.remove('open');
+        dom.setupModal.setAttribute('aria-hidden', 'true');
+        maybeScheduleAi();
+      }
+
+      function applyPreset(name) {
+        if (name === '1v1') {
+          app.draftSeats = [{ kind: 'human' }, makeAiSeat(0)];
+        } else if (name === '3p') {
+          app.draftSeats = [{ kind: 'human' }, makeAiSeat(0), makeAiSeat(1)];
+        } else if (name === '4p') {
+          app.draftSeats = [{ kind: 'human' }, makeAiSeat(0), makeAiSeat(1), makeAiSeat(2)];
+        } else if (name === 'spectator') {
+          app.draftSeats = [makeAiSeat(0), makeAiSeat(1), makeAiSeat(2), makeAiSeat(3)];
+        }
+        renderSetupModal();
+      }
+
+      function setDraftPlayerCount(count) {
+        const cur = app.draftSeats.slice(0, count);
+        while (cur.length < count) {
+          cur.push(makeAiSeat(cur.length - 1));
+        }
+        app.draftSeats = cur;
+        renderSetupModal();
+      }
+
+      function renderSetupModal() {
+        const count = app.draftSeats.length;
+        dom.playerCountSeg.querySelectorAll('button').forEach((btn) => {
+          btn.classList.toggle('active', Number(btn.dataset.count) === count);
+        });
+
+        const cps = sortedCheckpoints();
+
+        dom.setupSeatsList.innerHTML = app.draftSeats.map((seat, idx) => {
+          const col = playerColor(idx);
+          const isPolicy = seat.kind === 'checkpoint';
+
+          let cpSelectHtml = `<span class="seat-placeholder">${
+            seat.kind === 'human' ? 'Local human player' :
+            seat.kind === 'heuristic' ? 'Built-in tactical heuristic AI' :
+            'Uniform random legal moves'
+          }</span>`;
+
+          if (isPolicy) {
+            if (cps.length === 0) {
+              cpSelectHtml = `<span class="seat-placeholder" style="color:#ff9ba3;">No .mpk checkpoints found — load one below</span>`;
+            } else {
+              const opts = cps.map((cp) => {
+                const eloPart = cp.elo !== null && cp.elo !== undefined ? ` · Elo ${Math.round(cp.elo)}` : '';
+                const updPart = cp.update !== null && cp.update !== undefined ? ` · u${cp.update}` : '';
+                const text = `${cp.display_name || cp.file_stem}${eloPart}${updPart}`;
+                const sel = seat.path === cp.path ? 'selected' : '';
+                return `<option value="${escHtml(cp.path)}" ${sel}>${escHtml(text)}</option>`;
+              }).join('');
+              cpSelectHtml = `<select class="field-select seat-cp-select" data-idx="${idx}">${opts}</select>`;
+            }
+          }
+
+          const samplingHtml = isPolicy
+            ? `<select class="field-select seat-samp-select" data-idx="${idx}">
+                <option value="balanced" ${seat.sampling === 'balanced' ? 'selected' : ''}>Balanced</option>
+                <option value="greedy" ${seat.sampling === 'greedy' ? 'selected' : ''}>Greedy</option>
+                <option value="stochastic" ${seat.sampling === 'stochastic' ? 'selected' : ''}>Stochastic</option>
+              </select>`
+            : `<select class="field-select" disabled><option>—</option></select>`;
+
+          return `
+            <div class="seat-row">
+              <div class="seat-tag">
+                <span class="player-swatch" style="background:${col}; color:${col};"></span>
+                <span>P${idx + 1}</span>
+              </div>
+              <select class="field-select seat-kind-select" data-idx="${idx}">
+                <option value="human" ${seat.kind === 'human' ? 'selected' : ''}>Human</option>
+                <option value="checkpoint" ${seat.kind === 'checkpoint' ? 'selected' : ''}>Policy (.mpk)</option>
+                <option value="heuristic" ${seat.kind === 'heuristic' ? 'selected' : ''}>Heuristic Bot</option>
+                <option value="random" ${seat.kind === 'random' ? 'selected' : ''}>Random Bot</option>
+              </select>
+              <div>${cpSelectHtml}</div>
+              <div>${samplingHtml}</div>
+            </div>
+          `;
+        }).join('');
+
+        dom.setupSeatsList.querySelectorAll('.seat-kind-select').forEach((sel) => {
+          sel.addEventListener('change', () => {
+            const idx = Number(sel.dataset.idx);
+            const kind = sel.value;
+            if (kind === 'checkpoint') {
+              const best = sortedCheckpoints()[0];
+              app.draftSeats[idx] = {
+                kind: 'checkpoint',
+                path: best ? best.path : '',
+                label: best ? (best.display_name || best.file_stem) : 'Policy',
+                sampling: 'balanced',
+              };
+            } else {
+              app.draftSeats[idx] = { kind };
+            }
+            renderSetupModal();
+          });
+        });
+
+        dom.setupSeatsList.querySelectorAll('.seat-cp-select').forEach((sel) => {
+          sel.addEventListener('change', () => {
+            const idx = Number(sel.dataset.idx);
+            const cp = app.checkpoints.find(c => c.path === sel.value);
+            app.draftSeats[idx].path = sel.value;
+            if (cp) app.draftSeats[idx].label = cp.display_name || cp.file_stem;
+          });
+        });
+
+        dom.setupSeatsList.querySelectorAll('.seat-samp-select').forEach((sel) => {
+          sel.addEventListener('change', () => {
+            const idx = Number(sel.dataset.idx);
+            app.draftSeats[idx].sampling = sel.value;
+          });
+        });
+      }
+
+      async function refreshCheckpoints(showFeedback = true) {
+        try {
+          const data = await apiGet('/api/checkpoints');
+          app.checkpoints = data.checkpoints || [];
+          if (showFeedback) {
+            dom.mpkStatus.className = 'mpk-status ok';
+            dom.mpkStatus.textContent = `Found ${app.checkpoints.length} checkpoint${app.checkpoints.length === 1 ? '' : 's'} in runs/.`;
+          }
+          if (app.setupOpen) renderSetupModal();
+        } catch (err) {
+          if (showFeedback) {
+            dom.mpkStatus.className = 'mpk-status err';
+            dom.mpkStatus.textContent = `Rescan failed: ${err.message}`;
+          }
+        }
+      }
+
+      async function loadCustomCheckpoint() {
+        const path = dom.mpkPathInput.value.trim();
+        if (!path) {
+          dom.mpkStatus.className = 'mpk-status err';
+          dom.mpkStatus.textContent = 'Enter a path to a .mpk checkpoint file.';
+          return;
+        }
+        dom.btnLoadMpk.disabled = true;
+        dom.mpkStatus.className = 'mpk-status';
+        dom.mpkStatus.textContent = 'Loading checkpoint...';
+        try {
+          const resp = await apiPost('/api/checkpoints/load', { path });
+          if (!resp.ok) {
+            dom.mpkStatus.className = 'mpk-status err';
+            dom.mpkStatus.textContent = resp.error || 'Failed to load checkpoint.';
+            return;
+          }
+          const cp = resp.checkpoint;
+          if (cp && !app.checkpoints.some(c => c.path === cp.path)) {
+            app.checkpoints.unshift(cp);
+          }
+          // Auto-assign to first checkpoint seat missing a path, or last AI seat
+          const targetSeat = app.draftSeats.find(s => s.kind === 'checkpoint' && !s.path);
+          if (targetSeat && cp) {
+            targetSeat.path = cp.path;
+            targetSeat.label = cp.display_name || cp.file_stem;
+          }
+          dom.mpkStatus.className = 'mpk-status ok';
+          dom.mpkStatus.textContent = `Loaded ${cp?.display_name || path} (${resp.hidden_dim}×${resp.num_layers}).`;
+          dom.mpkPathInput.value = '';
+          renderSetupModal();
+        } catch (err) {
+          dom.mpkStatus.className = 'mpk-status err';
+          dom.mpkStatus.textContent = err.message || 'Load failed.';
+        } finally {
+          dom.btnLoadMpk.disabled = false;
+        }
+      }
+
+      async function startNewMatchFromModal() {
+        if (app.inFlight) return;
+        const cps = sortedCheckpoints();
+        const seats = app.draftSeats.map((s) => {
+          if (s.kind === 'checkpoint') {
+            const path = s.path || (cps[0]?.path || '');
+            if (!path) return { kind: 'heuristic' };
+            const cp = app.checkpoints.find(c => c.path === path);
+            return {
+              kind: 'checkpoint',
+              path,
+              label: s.label || cp?.display_name || cp?.file_stem || 'Policy',
+              sampling: s.sampling || 'balanced',
+            };
+          }
+          return { kind: s.kind };
+        });
+
+        const maxTurns = Math.max(20, Math.min(5000, Number(dom.setupMaxTurns.value) || 500));
+        const seedRaw = dom.setupSeed.value.trim();
+        app.draftSeed = seedRaw;
+        const seed = seedRaw === '' ? null : Number(seedRaw);
+
+        app.inFlight = true;
+        dom.btnStartMatch.disabled = true;
+        try {
+          const resp = await apiPost('/api/new_game', { seats, max_turns: maxTurns, seed });
+          if (resp.ok === false) {
+            showToast(resp.error || 'Could not start match', true);
+            return;
+          }
+          app.aiPaused = false;
+          app.selected = null;
+          app.lastHumanAttack = null;
+          app.pinnedBattleId = null;
+          app.hoverBattle = null;
+          app.setupOpen = false;
+          dom.setupModal.classList.remove('open');
+          dom.setupModal.setAttribute('aria-hidden', 'true');
+          applyStateResponse(resp, { animateMode: 'instant' });
+          maybeScheduleAi();
+        } catch (err) {
+          showToast(err.message || 'Failed to start match', true);
+        } finally {
+          app.inFlight = false;
+          dom.btnStartMatch.disabled = false;
+        }
+      }
+
+      // ---------- Event Wiring ----------
+
+      function bindGlobalEvents() {
+        // AI speed segmented control
+        dom.speedSeg.querySelectorAll('button').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            app.aiSpeed = btn.dataset.speed;
+            dom.speedSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+            if (app.state && !app.state.human_turn && app.state.phase !== 'ended' && !app.aiPaused) {
+              maybeScheduleAi();
+            }
+          });
+        });
+
+        dom.btnPause.addEventListener('click', toggleAiPause);
+        dom.btnStep.addEventListener('click', stepAiOnce);
+        dom.btnRestart.addEventListener('click', restartMatch);
+        dom.btnSetup.addEventListener('click', openSetupModal);
+
+        // Hovering Live Dice Arena highlights spotlight battle on the map
+        dom.dicePanel.addEventListener('mouseenter', () => {
+          if (app.spotlightBattle) {
+            app.hoverBattle = app.spotlightBattle;
+            renderBoard();
+          }
+        });
+        dom.dicePanel.addEventListener('mouseleave', () => {
+          if (app.hoverBattle && app.hoverBattle === app.spotlightBattle) {
+            app.hoverBattle = null;
+            renderBoard();
+          }
+        });
+
+        // Setup modal controls
+        dom.btnSetupClose.addEventListener('click', closeSetupModal);
+        dom.btnSetupCancel.addEventListener('click', closeSetupModal);
+        dom.setupModal.addEventListener('click', (ev) => {
+          if (ev.target === dom.setupModal) closeSetupModal();
+        });
+        dom.playerCountSeg.querySelectorAll('button').forEach((btn) => {
+          btn.addEventListener('click', () => setDraftPlayerCount(Number(btn.dataset.count)));
+        });
+        dom.setupModal.querySelectorAll('[data-preset]').forEach((btn) => {
+          btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+        });
+        dom.btnLoadMpk.addEventListener('click', loadCustomCheckpoint);
+        dom.mpkPathInput.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') loadCustomCheckpoint();
+        });
+        dom.btnRescanMpk.addEventListener('click', () => refreshCheckpoints(true));
+        dom.btnStartMatch.addEventListener('click', startNewMatchFromModal);
+
+        // Keyboard shortcuts
+        window.addEventListener('keydown', (ev) => {
+          const activeEl = document.activeElement;
+          const typing = activeEl && (
+            activeEl.tagName === 'INPUT' ||
+            activeEl.tagName === 'SELECT' ||
+            activeEl.tagName === 'TEXTAREA' ||
+            activeEl.isContentEditable
+          );
+
+          if (ev.key === 'Escape') {
+            if (app.setupOpen) {
+              closeSetupModal();
+            } else if (app.selected !== null) {
+              app.selected = null;
+              renderAll();
+            }
+            return;
+          }
+
+          if (typing || app.setupOpen) return;
+
+          const key = ev.key.toLowerCase();
+          if (key === 'e') {
+            if (app.state?.human_turn && app.state.phase === 'attack') {
+              ev.preventDefault();
+              finishAttack();
+            } else if (app.state?.human_turn && app.state.phase === 'fortify') {
+              ev.preventDefault();
+              passFortify();
+            }
+            return;
+          }
+
+          if (key === '1' || key === '2' || key === '3') {
+            app.attackDicePref = Number(key);
+            if (app.state?.human_turn && app.state.phase === 'attack') renderActionBar();
+            return;
+          }
+
+          if (key === 'a' || key === '0') {
+            app.attackDicePref = 'max';
+            if (app.state?.human_turn && app.state.phase === 'attack') renderActionBar();
+            return;
+          }
+
+          if (ev.code === 'Space') {
+            ev.preventDefault();
+            const st = app.state;
+            if (!st || st.phase === 'ended') return;
+            if (st.human_turn && st.phase === 'attack' && app.lastHumanAttack) {
+              if (getAttackTargets(app.lastHumanAttack.source).includes(app.lastHumanAttack.target)) {
+                executeHumanAttack(app.lastHumanAttack.source, app.lastHumanAttack.target);
+                return;
+              }
+            }
+            if (!st.human_turn) {
+              toggleAiPause();
+            }
+          }
+        });
+      }
+
+      // ---------- Bootstrap ----------
+
+      async function init() {
+        bindGlobalEvents();
+        try {
+          const [board, cpResp, state] = await Promise.all([
+            apiGet('/api/board'),
+            apiGet('/api/checkpoints').catch(() => ({ checkpoints: [] })),
+            apiGet('/api/state'),
+          ]);
+          app.board = board;
+          app.checkpoints = cpResp.checkpoints || [];
+          buildBoardSvg(board);
+          applyStateResponse(state, { animateMode: 'instant' });
+          maybeScheduleAi();
+        } catch (err) {
+          dom.actionBar.innerHTML = `
+            <div class="action-left">
+              <span class="action-badge attack">CONNECTION ERROR</span>
+              <span class="action-info">${escHtml(err.message || 'Could not reach Riskbot backend')}</span>
+            </div>
+            <div class="action-right">
+              <button type="button" class="btn btn-primary" onclick="location.reload()">Retry</button>
+            </div>
+          `;
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
