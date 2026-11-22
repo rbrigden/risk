@@ -1,4 +1,10 @@
-#![cfg_attr(feature = "train", recursion_limit = "256")]
+#![cfg_attr(
+    any(
+        feature = "train",
+        all(feature = "visualizer", not(target_arch = "wasm32"))
+    ),
+    recursion_limit = "256"
+)]
 
 mod game;
 
@@ -11,5 +17,5 @@ pub mod visualizer;
 #[cfg(all(feature = "visualizer", not(target_arch = "wasm32")))]
 pub mod dashboard;
 
-#[cfg(feature = "train")]
+#[cfg(any(feature = "train", feature = "visualizer"))]
 pub mod train;

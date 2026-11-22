@@ -17,7 +17,6 @@ pub const MAX_REINFORCEMENTS: u64 = reinforcements(N, REGIONS.len());
 const fn reinforcements(owned: usize, regions: usize) -> u64 {
     (2 + owned / 4 + 2 * regions) as u64
 }
-#[cfg(any(not(target_arch = "wasm32"), test))]
 pub const MAX_PLAYERS: usize = 6;
 pub const BRIDGES: [(usize, usize); 9] = [
     (1, 11),
@@ -98,7 +97,6 @@ impl Action {
         })
     }
 
-    #[cfg(any(not(target_arch = "wasm32"), test))]
     pub fn encode(self) -> Option<usize> {
         let edge_id = |a, b| EDGES.binary_search(&(a, b)).ok().map(|i| 3 * i);
         match self {
@@ -121,6 +119,7 @@ pub enum Phase {
 }
 
 #[cfg_attr(not(feature = "visualizer"), allow(dead_code))]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct BattleOutcome {
     pub attack: [u8; 3],
     pub defense: [u8; 2],
@@ -193,7 +192,7 @@ impl Game {
         self.start_turn();
     }
 
-    fn fortify_amount(&self, source: usize, option: usize) -> Option<u64> {
+    pub fn fortify_amount(&self, source: usize, option: usize) -> Option<u64> {
         let movable = self.troops[source] - 1;
         match option {
             0 if movable >= 1 => Some(1),

@@ -1,14 +1,17 @@
 //! GPU-accelerated self-play reinforcement learning environment and Masked PPO trainer.
 
 pub mod bots;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod env;
 pub mod features;
 pub mod league;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod model;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod ppo;
 pub mod telemetry;
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::env::{Transition, compute_gae};
     use super::features::{BoardTopology, board_potential, encode_observation};
