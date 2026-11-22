@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "$0")/.."
+
+port="${1:-8765}"
+output=target/visualizer-web
+cargo build --locked --release --lib --features visualizer --target wasm32-unknown-unknown
+mkdir -p "$output"
+wasm-bindgen --target web --out-dir "$output" target/wasm32-unknown-unknown/release/riskbot.wasm
+cp web/index.html "$output/index.html"
+exec python3 -m http.server "$port" --bind 127.0.0.1 --directory "$output"

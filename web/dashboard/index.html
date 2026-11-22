@@ -1,0 +1,2425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riskbot // Self-Play &amp; Elo League</title>
+  <style>
+    :root {
+      --bg: #131c26;
+      --bg-elevated: #17222e;
+      --card: #1b2836;
+      --card-hover: #203040;
+      --border: #293b4d;
+      --border-strong: #375067;
+      --text: #e9f1f6;
+      --text-muted: #93a9bd;
+      --text-dim: #698095;
+      --cyan: #5ac7ef;
+      --cyan-soft: rgba(90, 199, 239, 0.16);
+      --coral: #ff9673;
+      --coral-soft: rgba(255, 150, 115, 0.16);
+      --sage: #b7de74;
+      --sage-soft: rgba(183, 222, 116, 0.16);
+      --gold: #f2c94c;
+      --gold-soft: rgba(242, 201, 76, 0.16);
+      --slate: #89a0b4;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 10px 28px rgba(4, 10, 18, 0.34);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(1200px 420px at 18% -10%, rgba(90, 199, 239, 0.08), transparent 60%),
+        radial-gradient(900px 360px at 88% -8%, rgba(242, 201, 76, 0.05), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .mono {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Header */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(12px);
+      background: rgba(19, 28, 38, 0.88);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(145deg, rgba(90, 199, 239, 0.22), rgba(90, 199, 239, 0.05));
+      border: 1px solid rgba(90, 199, 239, 0.35);
+      display: grid;
+      place-items: center;
+      flex: none;
+      box-shadow: 0 0 18px rgba(90, 199, 239, 0.14);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .brand-title span {
+      color: var(--cyan);
+      font-weight: 600;
+    }
+
+    .brand-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    select.run-select {
+      appearance: none;
+      background:
+        var(--card)
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2393a9bd' d='M2.5 4.25L6 7.75l3.5-3.5'/%3E%3C/svg%3E")
+        no-repeat right 10px center;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 7px 30px 7px 11px;
+      font: inherit;
+      font-size: 13px;
+      min-width: 195px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    select.run-select:hover, select.run-select:focus {
+      outline: none;
+      border-color: var(--cyan);
+    }
+
+    .seg {
+      display: inline-flex;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .seg button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .seg button:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .seg button.active {
+      background: rgba(90, 199, 239, 0.18);
+      color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(90, 199, 239, 0.35);
+    }
+
+    .btn {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--border-strong);
+      background: var(--card-hover);
+    }
+
+    .btn.demo-active {
+      background: var(--gold-soft);
+      border-color: rgba(242, 201, 76, 0.55);
+      color: var(--gold);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      position: relative;
+    }
+
+    .status-pill.live {
+      color: var(--sage);
+      border-color: rgba(183, 222, 116, 0.38);
+      background: rgba(183, 222, 116, 0.1);
+    }
+
+    .status-pill.live .status-dot {
+      background: var(--sage);
+      box-shadow: 0 0 8px var(--sage);
+    }
+
+    .status-pill.live .status-dot::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid var(--sage);
+      animation: pulse 1.8s ease-out infinite;
+    }
+
+    .status-pill.paused {
+      color: var(--gold);
+      border-color: rgba(242, 201, 76, 0.35);
+      background: rgba(242, 201, 76, 0.1);
+    }
+
+    .status-pill.paused .status-dot {
+      background: var(--gold);
+    }
+
+    .status-pill.waiting {
+      color: var(--cyan);
+      border-color: rgba(90, 199, 239, 0.32);
+      background: rgba(90, 199, 239, 0.1);
+    }
+
+    .status-pill.waiting .status-dot {
+      background: var(--cyan);
+      animation: blink 1.6s ease-in-out infinite;
+    }
+
+    .status-pill.demo {
+      color: var(--gold);
+      border-color: rgba(242, 201, 76, 0.48);
+      background: rgba(242, 201, 76, 0.13);
+    }
+
+    .status-pill.demo .status-dot {
+      background: var(--gold);
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.75); opacity: 0.9; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Layout */
+    main {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 18px 20px 44px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 13px 16px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(90, 199, 239, 0.32);
+      background: linear-gradient(90deg, rgba(90, 199, 239, 0.11), rgba(27, 40, 54, 0.9));
+      color: var(--text);
+    }
+
+    .banner.visible { display: flex; }
+
+    .banner code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: rgba(19, 28, 38, 0.72);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 5px;
+      color: var(--cyan);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      padding: 13px 16px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(41, 59, 77, 0.65);
+    }
+
+    .card-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-subtitle {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .card-body {
+      padding: 14px 16px 16px;
+    }
+
+    /* KPI Strip */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .kpi-card {
+      padding: 14px 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent, var(--cyan)), transparent 80%);
+      opacity: 0.75;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .kpi-value {
+      font-size: 27px;
+      font-weight: 750;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .kpi-value.cyan { color: var(--cyan); }
+
+    .kpi-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .delta-pos { color: var(--sage); font-weight: 600; }
+    .delta-neg { color: var(--coral); font-weight: 600; }
+    .delta-flat { color: var(--text-muted); font-weight: 600; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border-strong);
+      background: rgba(19, 28, 38, 0.65);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .badge.cyan { color: var(--cyan); border-color: rgba(90, 199, 239, 0.35); background: var(--cyan-soft); }
+    .badge.sage { color: var(--sage); border-color: rgba(183, 222, 116, 0.35); background: var(--sage-soft); }
+    .badge.coral { color: var(--coral); border-color: rgba(255, 150, 115, 0.35); background: var(--coral-soft); }
+    .badge.gold { color: var(--gold); border-color: rgba(242, 201, 76, 0.38); background: var(--gold-soft); }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(19, 28, 38, 0.9);
+      border: 1px solid rgba(41, 59, 77, 0.8);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--cyan), #7ee0ff);
+      transition: width 0.35s ease;
+    }
+
+    .eval-chips {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .eval-chip {
+      background: rgba(19, 28, 38, 0.68);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .eval-chip-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .eval-chip-val {
+      font-size: 14.5px;
+      font-weight: 700;
+    }
+
+    /* Charts */
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--cyan);
+    }
+
+    .legend-swatch.dashed {
+      background: repeating-linear-gradient(
+        90deg,
+        currentColor 0 4px,
+        transparent 4px 7px
+      );
+      height: 2px;
+    }
+
+    .chart-shell {
+      position: relative;
+      width: 100%;
+    }
+
+    .chart-shell canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .chart-elo { height: 340px; }
+    .chart-secondary { height: 255px; }
+    .chart-diag { height: 175px; }
+
+    .chart-empty {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+      pointer-events: none;
+      padding: 16px;
+    }
+
+    /* Secondary 2-col row */
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: 16px;
+    }
+
+    /* PFSP bars */
+    .pfsp-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 255px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .pfsp-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding: 7px 9px;
+      border-radius: 8px;
+      background: rgba(19, 28, 38, 0.52);
+      border: 1px solid rgba(41, 59, 77, 0.65);
+    }
+
+    .pfsp-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12.5px;
+    }
+
+    .pfsp-id {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      font-weight: 600;
+    }
+
+    .pfsp-stats {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      white-space: nowrap;
+    }
+
+    .pfsp-pct {
+      color: var(--text);
+      font-weight: 700;
+      min-width: 44px;
+      text-align: right;
+    }
+
+    .pfsp-bar-track {
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(19, 28, 38, 0.92);
+      overflow: hidden;
+    }
+
+    .pfsp-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .pfsp-note {
+      margin-top: 10px;
+      padding-top: 9px;
+      border-top: 1px solid rgba(41, 59, 77, 0.55);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .difficulty-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    /* League Table */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table.league-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    table.league-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      user-select: none;
+      cursor: pointer;
+      transition: color 0.12s ease;
+    }
+
+    table.league-table th:hover {
+      color: var(--text);
+    }
+
+    table.league-table th.sorted {
+      color: var(--cyan);
+    }
+
+    table.league-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(41, 59, 77, 0.5);
+      white-space: nowrap;
+    }
+
+    table.league-table tbody tr:hover {
+      background: rgba(90, 199, 239, 0.05);
+    }
+
+    table.league-table tbody tr.inactive-row {
+      opacity: 0.58;
+    }
+
+    .wr-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 135px;
+    }
+
+    .mini-bar {
+      width: 68px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(19, 28, 38, 0.9);
+      border: 1px solid rgba(41, 59, 77, 0.7);
+      overflow: hidden;
+      flex: none;
+    }
+
+    .mini-bar > span {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+    }
+
+    /* PPO Diagnostics */
+    .diag-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .diag-readout {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    /* Floating Tooltip */
+    .tooltip {
+      position: fixed;
+      z-index: 100;
+      pointer-events: none;
+      display: none;
+      min-width: 175px;
+      max-width: 280px;
+      background: rgba(15, 23, 32, 0.96);
+      border: 1px solid var(--border-strong);
+      border-radius: 9px;
+      padding: 9px 11px;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.52);
+      font-size: 12px;
+      color: var(--text);
+      backdrop-filter: blur(8px);
+    }
+
+    .tooltip-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding-bottom: 6px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(41, 59, 77, 0.8);
+    }
+
+    .tooltip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 3px 0;
+    }
+
+    .tooltip-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .tooltip-val {
+      font-weight: 700;
+      font-family: var(--mono);
+      font-size: 11.5px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1180px) {
+      .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .diag-grid { grid-template-columns: 1fr; }
+      .chart-elo { height: 270px; }
+    }
+
+    @media (max-width: 520px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      select.run-select { min-width: 150px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="#5ac7ef" stroke-width="1.6" stroke-opacity="0.5"/>
+            <circle cx="12" cy="12" r="4.5" stroke="#5ac7ef" stroke-width="1.4" stroke-dasharray="2.5 2.5"/>
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="#5ac7ef" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M12 12l5-5" stroke="#f2c94c" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="2" fill="#5ac7ef"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">Riskbot <span>// Self-Play &amp; Elo League</span></div>
+          <div class="brand-sub" id="runMetaLine">Waiting for telemetry…</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <span class="control-label">Run</span>
+          <select id="runSelect" class="run-select" aria-label="Select training run"></select>
+        </div>
+
+        <div class="seg" role="group" aria-label="Polling interval" id="pollControls">
+          <button type="button" data-poll="1000">1s</button>
+          <button type="button" data-poll="2000" class="active">2s</button>
+          <button type="button" data-poll="5000">5s</button>
+          <button type="button" data-poll="0">Pause</button>
+        </div>
+
+        <button type="button" class="btn" id="demoToggle">Load Demo</button>
+
+        <div class="status-pill waiting" id="statusPill" role="status">
+          <span class="status-dot"></span>
+          <span id="statusText">WAITING</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="banner" id="emptyBanner">
+      <div>
+        <strong>No live telemetry detected yet.</strong>
+        Start a training run (e.g. <code>cargo run --release --bin riskbot-train</code>) to stream <code>metrics.jsonl</code> and <code>league.json</code>, or preview the dashboard with synthetic data.
+      </div>
+      <button type="button" class="btn" id="bannerDemoBtn">Preview Demo Run</button>
+    </div>
+
+    <!-- KPI Hero Strip -->
+    <section class="kpi-grid" aria-label="Key training metrics">
+      <div class="card kpi-card" style="--accent: var(--cyan);">
+        <div class="kpi-label">
+          <span>Learner Elo</span>
+          <span class="badge cyan" id="kpiEloRank">Rating</span>
+        </div>
+        <div class="kpi-value cyan tabular" id="kpiElo">—</div>
+        <div class="kpi-meta tabular">
+          <span id="kpiEloDeltaStart">Start: —</span>
+          <span id="kpiEloDelta10">Last 10: —</span>
+        </div>
+      </div>
+
+      <div class="card kpi-card" style="--accent: var(--sage);">
+        <div class="kpi-label">
+          <span>Training Progress</span>
+          <span class="mono" id="kpiPct" style="color: var(--text-muted); font-size: 11px;">—</span>
+        </div>
+        <div class="kpi-value tabular" id="kpiProgress">—</div>
+        <div class="progress-track"><div class="progress-fill" id="kpiProgressBar"></div></div>
+        <div class="kpi-meta tabular">
+          <span id="kpiElapsed">Elapsed: —</span>
+          <span id="kpiEta">ETA: —</span>
+        </div>
+      </div>
+
+      <div class="card kpi-card" style="--accent: var(--gold);">
+        <div class="kpi-label">
+          <span>Throughput</span>
+          <span class="badge gold" id="kpiBackend">Backend</span>
+        </div>
+        <div class="kpi-value tabular" id="kpiSps">—</div>
+        <div class="kpi-meta tabular">
+          <span id="kpiSteps">Steps: —</span>
+          <span id="kpiAvgTurns">Avg turns: —</span>
+        </div>
+      </div>
+
+      <div class="card kpi-card" style="--accent: var(--coral);">
+        <div class="kpi-label">
+          <span>Eval Win Rates</span>
+          <span class="mono" id="kpiEvalUpd" style="color: var(--text-dim); font-size: 11px;">latest</span>
+        </div>
+        <div class="eval-chips tabular">
+          <div class="eval-chip">
+            <span class="eval-chip-label">Random</span>
+            <span class="eval-chip-val" id="kpiEvalRandom" style="color: var(--sage);">—</span>
+          </div>
+          <div class="eval-chip">
+            <span class="eval-chip-label">Heuristic</span>
+            <span class="eval-chip-val" id="kpiEvalHeuristic" style="color: var(--coral);">—</span>
+          </div>
+          <div class="eval-chip">
+            <span class="eval-chip-label">League</span>
+            <span class="eval-chip-val" id="kpiEvalLeague" style="color: var(--cyan);">—</span>
+          </div>
+        </div>
+        <div class="kpi-meta tabular">
+          <span id="kpiEvalTurns">Eval turns: —</span>
+        </div>
+      </div>
+
+      <div class="card kpi-card" style="--accent: #8cb7d9;">
+        <div class="kpi-label">
+          <span>PFSP League Pool</span>
+          <span class="badge" id="kpiPfspBadge">PFSP</span>
+        </div>
+        <div class="kpi-value tabular" id="kpiPool">—</div>
+        <div class="kpi-meta tabular">
+          <span id="kpiPoolSub">Snapshots: —</span>
+          <span id="kpiMatchCfg">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Primary Chart: Elo Progression -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <div class="card-title">Elo Progression</div>
+          <div class="card-subtitle">Learner rating trajectory against league snapshots and anchored baselines</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--cyan); height: 3.5px;"></span>Learner Elo</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--gold);"></span>Best Snapshot</span>
+            <span class="legend-item"><span class="legend-swatch dashed" style="color: var(--slate);"></span>Mean Snapshot</span>
+            <span class="legend-item"><span class="legend-swatch dashed" style="color: var(--coral);"></span>Heuristic</span>
+            <span class="legend-item"><span class="legend-swatch dashed" style="color: var(--sage);"></span>Random Anchor</span>
+          </div>
+          <div class="seg" role="group" aria-label="Elo chart X axis" id="eloAxisToggle">
+            <button type="button" data-axis="update" class="active">Updates</button>
+            <button type="button" data-axis="steps">Env Steps</button>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-shell chart-elo">
+          <canvas id="eloCanvas"></canvas>
+          <div class="chart-empty" id="eloEmpty">Waiting for Elo history…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Secondary Row: Eval Win Rates & PFSP Distribution -->
+    <section class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-title">Evaluation Win Rates (%)</div>
+            <div class="card-subtitle">Periodic head-to-head benchmark win rate across opponents (50% parity dashed)</div>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--sage);"></span>vs Random</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--coral);"></span>vs Heuristic</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--cyan);"></span>vs League</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-shell chart-secondary">
+            <canvas id="evalCanvas"></canvas>
+            <div class="chart-empty" id="evalEmpty">No evaluation checkpoints recorded yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-title">PFSP Opponent Sampling Distribution</div>
+            <div class="card-subtitle" id="pfspSubtitle">Live opponent sampling probability weighted by difficulty</div>
+          </div>
+          <span class="badge cyan" id="pfspActiveCount">0 active</span>
+        </div>
+        <div class="card-body">
+          <div class="pfsp-list" id="pfspList">
+            <div class="chart-empty" style="position:static; min-height:190px;">Waiting for league.json…</div>
+          </div>
+          <div class="pfsp-note">
+            <span id="pfspExplanation">Color encodes learner win rate vs each opponent.</span>
+            <span class="difficulty-key">
+              <span><span class="dot" style="background: var(--coral);"></span>Hard (&lt;45%)</span>
+              <span><span class="dot" style="background: var(--gold);"></span>Even (45–65%)</span>
+              <span><span class="dot" style="background: var(--sage);"></span>Favorable (&gt;65%)</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- League Standings Table -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <div class="card-title">League Standings</div>
+          <div class="card-subtitle">All baseline opponents and historical policy snapshots (click column headers to sort)</div>
+        </div>
+        <div class="badge" id="leagueSummary">0 members</div>
+      </div>
+      <div class="table-wrap">
+        <table class="league-table" id="leagueTable">
+          <thead>
+            <tr>
+              <th data-sort="id">Member</th>
+              <th data-sort="kind">Kind</th>
+              <th data-sort="elo" class="sorted">Elo ▼</th>
+              <th data-sort="learner_win_rate">Learner Win %</th>
+              <th data-sort="games">W-L-D (Games)</th>
+              <th data-sort="pfsp_weight">PFSP Weight</th>
+              <th data-sort="created_update">Created @ Upd</th>
+              <th data-sort="active">Status</th>
+            </tr>
+          </thead>
+          <tbody id="leagueBody">
+            <tr><td colspan="8" style="text-align:center; color: var(--text-dim); padding: 26px;">No league members recorded yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PPO Diagnostics Grid -->
+    <section>
+      <div style="display:flex; align-items:baseline; justify-content:space-between; margin: 2px 2px 10px;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted);">PPO Diagnostics</div>
+        <div class="mono" style="font-size:11.5px; color:var(--text-dim);" id="diagMeta">LR: —</div>
+      </div>
+      <div class="diag-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-title">Policy Loss &amp; Clip Fraction</div>
+            </div>
+            <div class="diag-readout mono">
+              <span style="color: var(--cyan);" id="diagPolicyVal">Loss —</span>
+              <span style="color: var(--coral);" id="diagClipVal">Clip —</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-shell chart-diag">
+              <canvas id="diagPolicyCanvas"></canvas>
+              <div class="chart-empty" id="diagPolicyEmpty">Waiting for PPO updates…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-title">Value Loss</div>
+            </div>
+            <div class="diag-readout mono">
+              <span style="color: var(--gold);" id="diagValueVal">—</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-shell chart-diag">
+              <canvas id="diagValueCanvas"></canvas>
+              <div class="chart-empty" id="diagValueEmpty">Waiting for PPO updates…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-title">Masked Policy Entropy</div>
+            </div>
+            <div class="diag-readout mono">
+              <span style="color: var(--sage);" id="diagEntropyVal">—</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-shell chart-diag">
+              <canvas id="diagEntropyCanvas"></canvas>
+              <div class="chart-empty" id="diagEntropyEmpty">Waiting for PPO updates…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-title">Approx KL Divergence &amp; Throughput</div>
+            </div>
+            <div class="diag-readout mono">
+              <span style="color: var(--coral);" id="diagKlVal">KL —</span>
+              <span style="color: var(--cyan);" id="diagSpsVal">— sps</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-shell chart-diag">
+              <canvas id="diagKlCanvas"></canvas>
+              <div class="chart-empty" id="diagKlEmpty">Waiting for PPO updates…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const COLORS = {
+        bg: '#131c26',
+        card: '#1b2836',
+        border: '#293b4d',
+        grid: 'rgba(147, 169, 189, 0.12)',
+        axis: 'rgba(147, 169, 189, 0.58)',
+        text: '#e9f1f6',
+        muted: '#93a9bd',
+        cyan: '#5ac7ef',
+        coral: '#ff9673',
+        sage: '#b7de74',
+        gold: '#f2c94c',
+        slate: '#89a0b4'
+      };
+
+      const state = {
+        runs: [],
+        selectedRun: null,
+        pollMs: 2000,
+        pollTimer: null,
+        demoMode: false,
+        eloAxis: 'update',
+        sortKey: 'elo',
+        sortDir: 'desc',
+        metrics: [],
+        league: null,
+        lastFetchOk: false,
+        lastUpdatedAt: null,
+        charts: {}
+      };
+
+      const el = (id) => document.getElementById(id);
+      const tooltipEl = el('tooltip');
+
+      function esc(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function isNum(v) {
+        return typeof v === 'number' && Number.isFinite(v);
+      }
+
+      function fmtInt(v) {
+        return isNum(v) ? Math.round(v).toLocaleString('en-US') : '—';
+      }
+
+      function fmtCompact(v) {
+        if (!isNum(v)) return '—';
+        const abs = Math.abs(v);
+        if (abs >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+        if (abs >= 1e3) return (v / 1e3).toFixed(1) + 'k';
+        return Math.round(v).toString();
+      }
+
+      function fmtFloat(v, digits = 1) {
+        return isNum(v) ? v.toFixed(digits) : '—';
+      }
+
+      function fmtPct(v, digits = 1) {
+        return isNum(v) ? (v * 100).toFixed(digits) + '%' : '—';
+      }
+
+      function fmtDuration(secs) {
+        if (!isNum(secs) || secs < 0) return '—';
+        const s = Math.round(secs);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const rem = s % 60;
+        if (h > 0) return `${h}h ${m}m`;
+        if (m > 0) return `${m}m ${rem}s`;
+        return `${rem}s`;
+      }
+
+      function fmtSigned(v, digits = 1) {
+        if (!isNum(v)) return '—';
+        const prefix = v > 0.05 ? '+' : '';
+        return prefix + v.toFixed(digits);
+      }
+
+      function difficultyColor(learnerWinRate) {
+        if (!isNum(learnerWinRate)) return COLORS.slate;
+        if (learnerWinRate < 0.45) return COLORS.coral;
+        if (learnerWinRate <= 0.65) return COLORS.gold;
+        return COLORS.sage;
+      }
+
+      function showTooltip(clientX, clientY, title, rows) {
+        if (!rows.length) {
+          hideTooltip();
+          return;
+        }
+        tooltipEl.innerHTML =
+          `<div class="tooltip-title">${esc(title)}</div>` +
+          rows.map((r) => `
+            <div class="tooltip-row">
+              <span class="tooltip-key">
+                <span class="dot" style="background:${r.color}; margin-right:0;"></span>
+                ${esc(r.label)}
+              </span>
+              <span class="tooltip-val" style="color:${r.valueColor || COLORS.text};">${esc(r.value)}</span>
+            </div>
+          `).join('');
+        tooltipEl.style.display = 'block';
+
+        const rect = tooltipEl.getBoundingClientRect();
+        const pad = 14;
+        let left = clientX + 16;
+        let top = clientY - rect.height / 2;
+        if (left + rect.width + pad > window.innerWidth) {
+          left = clientX - rect.width - 16;
+        }
+        if (top < pad) top = pad;
+        if (top + rect.height + pad > window.innerHeight) {
+          top = window.innerHeight - rect.height - pad;
+        }
+        tooltipEl.style.left = left + 'px';
+        tooltipEl.style.top = top + 'px';
+      }
+
+      function hideTooltip() {
+        tooltipEl.style.display = 'none';
+      }
+
+      // Reusable crisp HiDPI line chart renderer with hover crosshair
+      class LineChart {
+        constructor(canvasId, emptyId) {
+          this.canvas = el(canvasId);
+          this.emptyEl = el(emptyId);
+          this.spec = null;
+          this.hoverIndex = null;
+          this.lastPointer = null;
+
+          this.canvas.addEventListener('mousemove', (e) => this.onMove(e));
+          this.canvas.addEventListener('mouseleave', () => {
+            this.hoverIndex = null;
+            this.lastPointer = null;
+            hideTooltip();
+            this.draw();
+          });
+
+          if (typeof ResizeObserver !== 'undefined') {
+            this.ro = new ResizeObserver(() => this.draw());
+            this.ro.observe(this.canvas.parentElement);
+          } else {
+            window.addEventListener('resize', () => this.draw());
+          }
+        }
+
+        setSpec(spec) {
+          this.spec = spec;
+          const hasData = spec && spec.xValues && spec.xValues.length > 0 &&
+            spec.series.some((s) => s.values.some(isNum));
+          if (this.emptyEl) {
+            this.emptyEl.style.display = hasData ? 'none' : 'flex';
+          }
+          if (this.hoverIndex !== null && (!spec || this.hoverIndex >= spec.xValues.length)) {
+            this.hoverIndex = null;
+          }
+          this.draw();
+        }
+
+        _layout(w, h) {
+          const hasRightAxis = !!(this.spec && this.spec.rightAxis);
+          const pad = {
+            top: 14,
+            right: hasRightAxis ? 56 : 18,
+            bottom: 28,
+            left: 54
+          };
+          return {
+            pad,
+            plotW: Math.max(10, w - pad.left - pad.right),
+            plotH: Math.max(10, h - pad.top - pad.bottom)
+          };
+        }
+
+        _computeAxisRange(values, fixedMin, fixedMax, refValues = []) {
+          const nums = values.filter(isNum).concat(refValues.filter(isNum));
+          if (!nums.length) return { min: 0, max: 1 };
+          let lo = Math.min(...nums);
+          let hi = Math.max(...nums);
+          if (isNum(fixedMin)) lo = fixedMin;
+          if (isNum(fixedMax)) hi = fixedMax;
+          if (Math.abs(hi - lo) < 1e-9) {
+            const delta = Math.abs(hi) > 1e-6 ? Math.abs(hi) * 0.15 : 1;
+            lo -= delta;
+            hi += delta;
+          } else if (!isNum(fixedMin) || !isNum(fixedMax)) {
+            const margin = (hi - lo) * 0.08;
+            if (!isNum(fixedMin)) lo -= margin;
+            if (!isNum(fixedMax)) hi += margin;
+          }
+          return { min: lo, max: hi };
+        }
+
+        _xToPx(x, xMin, xMax, pad, plotW) {
+          if (Math.abs(xMax - xMin) < 1e-9) return pad.left + plotW / 2;
+          return pad.left + ((x - xMin) / (xMax - xMin)) * plotW;
+        }
+
+        _yToPx(y, yMin, yMax, pad, plotH) {
+          if (Math.abs(yMax - yMin) < 1e-9) return pad.top + plotH / 2;
+          return pad.top + (1 - (y - yMin) / (yMax - yMin)) * plotH;
+        }
+
+        onMove(event) {
+          if (!this.spec || !this.spec.xValues || !this.spec.xValues.length) return;
+          const rect = this.canvas.getBoundingClientRect();
+          const mx = event.clientX - rect.left;
+          const { pad, plotW } = this._layout(rect.width, rect.height);
+          const xs = this.spec.xValues;
+          const xMin = xs[0];
+          const xMax = xs[xs.length - 1];
+
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          for (let i = 0; i < xs.length; i++) {
+            const px = this._xToPx(xs[i], xMin, xMax, pad, plotW);
+            const d = Math.abs(px - mx);
+            if (d < bestDist) {
+              bestDist = d;
+              bestIdx = i;
+            }
+          }
+
+          this.hoverIndex = bestIdx;
+          this.lastPointer = { x: event.clientX, y: event.clientY };
+          this.draw();
+
+          if (this.spec.buildTooltip) {
+            const tip = this.spec.buildTooltip(bestIdx);
+            if (tip) {
+              showTooltip(event.clientX, event.clientY, tip.title, tip.rows);
+            }
+          }
+        }
+
+        draw() {
+          const parent = this.canvas.parentElement;
+          const w = parent.clientWidth;
+          const h = parent.clientHeight;
+          if (!w || !h) return;
+
+          const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+          if (this.canvas.width !== Math.round(w * dpr) || this.canvas.height !== Math.round(h * dpr)) {
+            this.canvas.width = Math.round(w * dpr);
+            this.canvas.height = Math.round(h * dpr);
+          }
+
+          const ctx = this.canvas.getContext('2d');
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          ctx.clearRect(0, 0, w, h);
+
+          if (!this.spec || !this.spec.xValues || !this.spec.xValues.length) {
+            ctx.restore();
+            return;
+          }
+
+          const spec = this.spec;
+          const xs = spec.xValues;
+          const { pad, plotW, plotH } = this._layout(w, h);
+
+          const leftVals = [];
+          const rightVals = [];
+          for (const s of spec.series) {
+            if (s.axis === 'right') rightVals.push(...s.values);
+            else leftVals.push(...s.values);
+          }
+          if (!leftVals.some(isNum) && !rightVals.some(isNum)) {
+            ctx.restore();
+            return;
+          }
+
+          const refLeft = (spec.refLines || []).filter((r) => r.axis !== 'right' && r.includeInRange !== false).map((r) => r.value);
+          const leftRange = this._computeAxisRange(leftVals, spec.yMin, spec.yMax, refLeft);
+          const rightRange = spec.rightAxis
+            ? this._computeAxisRange(rightVals, spec.rightAxis.min, spec.rightAxis.max)
+            : null;
+
+          const xMin = xs[0];
+          const xMax = xs[xs.length - 1];
+
+          // Horizontal grid & Y labels
+          const yTicks = spec.yTicks || 5;
+          ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
+          ctx.textBaseline = 'middle';
+
+          for (let i = 0; i <= yTicks; i++) {
+            const frac = i / yTicks;
+            const py = pad.top + frac * plotH;
+            const val = leftRange.max - frac * (leftRange.max - leftRange.min);
+
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(pad.left, py);
+            ctx.lineTo(pad.left + plotW, py);
+            ctx.stroke();
+
+            ctx.fillStyle = COLORS.axis;
+            ctx.textAlign = 'right';
+            const label = spec.formatY ? spec.formatY(val) : val.toFixed(1);
+            ctx.fillText(label, pad.left - 8, py);
+
+            if (rightRange) {
+              const rVal = rightRange.max - frac * (rightRange.max - rightRange.min);
+              ctx.textAlign = 'left';
+              ctx.fillStyle = spec.rightAxis.color || COLORS.axis;
+              const rLabel = spec.rightAxis.format ? spec.rightAxis.format(rVal) : rVal.toFixed(1);
+              ctx.fillText(rLabel, pad.left + plotW + 8, py);
+            }
+          }
+
+          // Vertical grid & X labels
+          const xTickCount = Math.min(xs.length, Math.max(2, Math.floor(plotW / 115)));
+          ctx.textBaseline = 'top';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = COLORS.axis;
+          for (let i = 0; i < xTickCount; i++) {
+            const frac = xTickCount === 1 ? 0.5 : i / (xTickCount - 1);
+            const xVal = xMin + frac * (xMax - xMin);
+            const px = this._xToPx(xVal, xMin, xMax, pad, plotW);
+
+            ctx.strokeStyle = 'rgba(147, 169, 189, 0.06)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(px, pad.top);
+            ctx.lineTo(px, pad.top + plotH);
+            ctx.stroke();
+
+            const xLabel = spec.formatX ? spec.formatX(xVal) : Math.round(xVal).toString();
+            ctx.fillText(xLabel, px, pad.top + plotH + 9);
+          }
+
+          // Reference horizontal lines
+          for (const ref of spec.refLines || []) {
+            if (!isNum(ref.value)) continue;
+            const py = this._yToPx(ref.value, leftRange.min, leftRange.max, pad, plotH);
+            if (py < pad.top - 2 || py > pad.top + plotH + 2) continue;
+            ctx.save();
+            ctx.strokeStyle = ref.color || COLORS.muted;
+            ctx.globalAlpha = ref.alpha ?? 0.6;
+            ctx.lineWidth = 1.25;
+            ctx.setLineDash(ref.dash || [5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(pad.left, py);
+            ctx.lineTo(pad.left + plotW, py);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (ref.label) {
+              ctx.font = '600 10.5px Inter, system-ui, sans-serif';
+              const textW = ctx.measureText(ref.label).width;
+              const alignRight = ref.align !== 'left';
+              const lx = alignRight ? pad.left + plotW - textW - 10 : pad.left + 8;
+              const ly = Math.max(pad.top + 4, py - 18);
+              ctx.globalAlpha = 0.88;
+              ctx.fillStyle = '#131c26';
+              ctx.fillRect(lx - 4, ly, textW + 8, 15);
+              ctx.fillStyle = ref.color || COLORS.muted;
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'top';
+              ctx.fillText(ref.label, lx, ly + 2);
+            }
+            ctx.restore();
+          }
+
+          // Plot series
+          for (const s of spec.series) {
+            const range = s.axis === 'right' && rightRange ? rightRange : leftRange;
+            const pts = [];
+            for (let i = 0; i < xs.length; i++) {
+              const v = s.values[i];
+              if (!isNum(v)) continue;
+              pts.push({
+                i,
+                x: this._xToPx(xs[i], xMin, xMax, pad, plotW),
+                y: this._yToPx(v, range.min, range.max, pad, plotH)
+              });
+            }
+            if (!pts.length) continue;
+
+            // Optional area fill
+            if (s.area && pts.length > 1) {
+              ctx.save();
+              const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+              grad.addColorStop(0, s.areaTop || 'rgba(90, 199, 239, 0.24)');
+              grad.addColorStop(1, 'rgba(90, 199, 239, 0.0)');
+              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.moveTo(pts[0].x, pad.top + plotH);
+              for (const p of pts) ctx.lineTo(p.x, p.y);
+              ctx.lineTo(pts[pts.length - 1].x, pad.top + plotH);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+            }
+
+            // Line stroke
+            ctx.save();
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = s.width || 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            if (s.dash) ctx.setLineDash(s.dash);
+            if (s.glow) {
+              ctx.shadowColor = s.color;
+              ctx.shadowBlur = 10;
+            }
+            if (pts.length > 1) {
+              ctx.beginPath();
+              ctx.moveTo(pts[0].x, pts[0].y);
+              for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y);
+              ctx.stroke();
+            }
+            ctx.restore();
+
+            // Dots for sparse series or single point
+            if (s.dots || pts.length === 1) {
+              ctx.save();
+              ctx.fillStyle = s.color;
+              const radius = pts.length <= 25 ? 3.2 : 2.2;
+              for (const p of pts) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              ctx.restore();
+            }
+          }
+
+          // Hover crosshair & highlighted points
+          if (this.hoverIndex !== null && this.hoverIndex >= 0 && this.hoverIndex < xs.length) {
+            const idx = this.hoverIndex;
+            const hx = this._xToPx(xs[idx], xMin, xMax, pad, plotW);
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(233, 241, 246, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(hx, pad.top);
+            ctx.lineTo(hx, pad.top + plotH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            for (const s of spec.series) {
+              const v = s.values[idx];
+              if (!isNum(v)) continue;
+              const range = s.axis === 'right' && rightRange ? rightRange : leftRange;
+              const hy = this._yToPx(v, range.min, range.max, pad, plotH);
+
+              ctx.beginPath();
+              ctx.arc(hx, hy, 5.2, 0, Math.PI * 2);
+              ctx.fillStyle = COLORS.bg;
+              ctx.fill();
+              ctx.lineWidth = 2.2;
+              ctx.strokeStyle = s.color;
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+
+          ctx.restore();
+        }
+      }
+
+      // Generate realistic synthetic demo telemetry
+      function buildDemoData() {
+        const totalUpdates = 120;
+        const metrics = [];
+        const eloHistory = [];
+        let learnerElo = 1000.0;
+        let bestSnap = 1000.0;
+        let meanSnap = 1000.0;
+        let steps = 0;
+        let elapsed = 0;
+
+        for (let u = 1; u <= totalUpdates; u++) {
+          const progress = u / totalUpdates;
+          const stepDelta = 2150 + Math.round(Math.sin(u * 0.4) * 140);
+          steps += stepDelta;
+          const sps = 595 + Math.sin(u * 0.23) * 38 + progress * 45;
+          elapsed += stepDelta / sps;
+
+          const gain = (1 - Math.exp(-u / 34)) * 345;
+          const wave = Math.sin(u * 0.31) * 11 + Math.cos(u * 0.13) * 7;
+          learnerElo = 1000 + gain + wave;
+          bestSnap = Math.max(bestSnap, learnerElo - 18 + Math.sin(u * 0.2) * 4);
+          meanSnap = 1000 + gain * 0.62;
+
+          const isEval = u === 1 || u % 5 === 0 || u === totalUpdates;
+          const randWr = Math.min(0.99, 0.56 + (1 - Math.exp(-u / 18)) * 0.42 + Math.sin(u) * 0.015);
+          const heurWr = Math.min(0.84, 0.14 + (1 - Math.exp(-u / 48)) * 0.66 + Math.cos(u * 0.7) * 0.025);
+          const leagueWr = Math.min(0.76, 0.48 + (1 - Math.exp(-u / 35)) * 0.2 + Math.sin(u * 0.5) * 0.03);
+
+          metrics.push({
+            update: u,
+            total_env_steps: steps,
+            elapsed_secs: Number(elapsed.toFixed(1)),
+            steps_per_sec: Number(sps.toFixed(1)),
+            learning_rate: Number((3e-4 * (1 - 0.72 * progress)).toFixed(6)),
+            policy_loss: Number((-0.014 * Math.exp(-progress * 0.65) + Math.sin(u * 0.6) * 0.0028).toFixed(5)),
+            value_loss: Number((0.048 * Math.exp(-progress * 2.4) + 0.0032 + Math.abs(Math.sin(u * 0.45)) * 0.0018).toFixed(5)),
+            entropy: Number((3.08 - 1.28 * (1 - Math.exp(-progress * 2.2)) + Math.sin(u * 0.3) * 0.04).toFixed(3)),
+            approx_kl: Number((0.0072 + Math.sin(u * 0.52) * 0.0024 + (u % 17 === 0 ? 0.0032 : 0)).toFixed(5)),
+            clip_frac: Number((0.085 + Math.sin(u * 0.37) * 0.025).toFixed(4)),
+            episodes_finished: 6 + (u % 4),
+            win_frac: Number((0.55 + 0.25 * progress).toFixed(3)),
+            avg_turns: Number((62 - 26 * progress + Math.sin(u * 0.3) * 2.4).toFixed(1)),
+            learner_elo: Number(learnerElo.toFixed(1)),
+            pool_size: Math.min(10, 2 + Math.floor(u / 12)),
+            eval_random_win_rate: isEval ? Number(randWr.toFixed(3)) : null,
+            eval_heuristic_win_rate: isEval ? Number(heurWr.toFixed(3)) : null,
+            eval_league_win_rate: isEval ? Number(leagueWr.toFixed(3)) : null,
+            eval_random_avg_turns: isEval ? Number((34 - 11 * progress).toFixed(1)) : null,
+            eval_heuristic_avg_turns: isEval ? Number((52 - 16 * progress).toFixed(1)) : null
+          });
+
+          eloHistory.push({
+            update: u,
+            steps,
+            learner_elo: Number(learnerElo.toFixed(1)),
+            best_snapshot_elo: Number(bestSnap.toFixed(1)),
+            mean_snapshot_elo: Number(meanSnap.toFixed(1))
+          });
+        }
+
+        const members = [
+          { id: 'snap-u110', kind: 'snapshot', created_update: 110, elo: 1326.4, games: 64, wins: 31, losses: 30, draws: 3, learner_win_rate: 0.516, pfsp_weight: 0.294, active: true },
+          { id: 'snap-u095', kind: 'snapshot', created_update: 95, elo: 1291.8, games: 78, wins: 31, losses: 45, draws: 2, learner_win_rate: 0.590, pfsp_weight: 0.218, active: true },
+          { id: 'heuristic', kind: 'heuristic', created_update: 0, elo: 1214.2, games: 142, wins: 49, losses: 89, draws: 4, learner_win_rate: 0.641, pfsp_weight: 0.171, active: true },
+          { id: 'snap-u080', kind: 'snapshot', created_update: 80, elo: 1248.5, games: 84, wins: 30, losses: 52, draws: 2, learner_win_rate: 0.631, pfsp_weight: 0.149, active: true },
+          { id: 'snap-u060', kind: 'snapshot', created_update: 60, elo: 1179.0, games: 72, wins: 19, losses: 52, draws: 1, learner_win_rate: 0.729, pfsp_weight: 0.088, active: true },
+          { id: 'snap-u040', kind: 'snapshot', created_update: 40, elo: 1112.6, games: 68, wins: 12, losses: 56, draws: 0, learner_win_rate: 0.824, pfsp_weight: 0.049, active: true },
+          { id: 'snap-u020', kind: 'snapshot', created_update: 20, elo: 1034.1, games: 52, wins: 5, losses: 47, draws: 0, learner_win_rate: 0.904, pfsp_weight: 0.022, active: true },
+          { id: 'random', kind: 'random', created_update: 0, elo: 800.0, games: 128, wins: 4, losses: 124, draws: 0, learner_win_rate: 0.969, pfsp_weight: 0.009, active: true },
+          { id: 'snap-u010', kind: 'snapshot', created_update: 10, elo: 988.4, games: 40, wins: 3, losses: 37, draws: 0, learner_win_rate: 0.925, pfsp_weight: 0.0, active: false }
+        ];
+
+        const league = {
+          run_name: 'demo-ppo-pfsp',
+          players: 2,
+          max_turns: 200,
+          backend: 'WGPU/Vulkan GPU',
+          pfsp_mode: 'hard',
+          pfsp_p: 2.0,
+          current_update: totalUpdates,
+          total_updates: 200,
+          learner_elo: metrics[metrics.length - 1].learner_elo,
+          anchors: { random_elo: 800.0, heuristic_elo: 1200.0 },
+          members,
+          elo_history: eloHistory
+        };
+
+        return { metrics, league };
+      }
+
+      // Render KPI Hero Strip
+      function renderKpis(metrics, league) {
+        const last = metrics.length ? metrics[metrics.length - 1] : null;
+        const first = metrics.length ? metrics[0] : null;
+
+        // 1. Learner Elo
+        const elo = isNum(league?.learner_elo) ? league.learner_elo : (isNum(last?.learner_elo) ? last.learner_elo : null);
+        el('kpiElo').textContent = isNum(elo) ? elo.toFixed(1) : '—';
+
+        const eloSeries = (league?.elo_history?.length ? league.elo_history : metrics)
+          .map((d) => d.learner_elo)
+          .filter(isNum);
+        const startElo = eloSeries.length ? eloSeries[0] : null;
+        const prev10Elo = eloSeries.length ? eloSeries[Math.max(0, eloSeries.length - 11)] : null;
+        const dStart = isNum(elo) && isNum(startElo) ? elo - startElo : null;
+        const d10 = isNum(elo) && isNum(prev10Elo) ? elo - prev10Elo : null;
+
+        const clsFor = (d) => !isNum(d) || Math.abs(d) < 0.05 ? 'delta-flat' : (d > 0 ? 'delta-pos' : 'delta-neg');
+        el('kpiEloDeltaStart').innerHTML = `Total: <span class="${clsFor(dStart)}">${fmtSigned(dStart)}</span>`;
+        el('kpiEloDelta10').innerHTML = `Last 10u: <span class="${clsFor(d10)}">${fmtSigned(d10)}</span>`;
+
+        const heuristicElo = getHeuristicElo(league);
+        if (isNum(elo) && isNum(heuristicElo)) {
+          const diff = elo - heuristicElo;
+          el('kpiEloRank').textContent = `${diff >= 0 ? '+' : ''}${diff.toFixed(0)} vs Heur`;
+          el('kpiEloRank').className = 'badge ' + (diff >= 0 ? 'sage' : 'cyan');
+        } else {
+          el('kpiEloRank').textContent = 'Rating';
+          el('kpiEloRank').className = 'badge cyan';
+        }
+
+        // 2. Progress
+        const curUpd = isNum(league?.current_update) ? league.current_update : (isNum(last?.update) ? last.update : null);
+        const totUpd = isNum(league?.total_updates) ? league.total_updates : null;
+        if (isNum(curUpd) && isNum(totUpd) && totUpd > 0) {
+          const pct = Math.min(100, Math.max(0, (curUpd / totUpd) * 100));
+          el('kpiProgress').textContent = `${fmtInt(curUpd)} / ${fmtInt(totUpd)}`;
+          el('kpiPct').textContent = pct.toFixed(1) + '%';
+          el('kpiProgressBar').style.width = pct.toFixed(1) + '%';
+        } else if (isNum(curUpd)) {
+          el('kpiProgress').textContent = `Upd ${fmtInt(curUpd)}`;
+          el('kpiPct').textContent = 'live';
+          el('kpiProgressBar').style.width = '100%';
+        } else {
+          el('kpiProgress').textContent = '—';
+          el('kpiPct').textContent = '—';
+          el('kpiProgressBar').style.width = '0%';
+        }
+
+        const elapsed = isNum(last?.elapsed_secs) ? last.elapsed_secs : null;
+        el('kpiElapsed').textContent = `Elapsed: ${fmtDuration(elapsed)}`;
+        if (isNum(elapsed) && isNum(curUpd) && isNum(totUpd) && curUpd > 0 && totUpd >= curUpd) {
+          if (curUpd >= totUpd) {
+            el('kpiEta').textContent = 'Complete';
+          } else {
+            const eta = (elapsed / curUpd) * (totUpd - curUpd);
+            el('kpiEta').textContent = `ETA: ${fmtDuration(eta)}`;
+          }
+        } else {
+          el('kpiEta').textContent = 'ETA: —';
+        }
+
+        // 3. Throughput
+        el('kpiSps').textContent = isNum(last?.steps_per_sec) ? `${Math.round(last.steps_per_sec).toLocaleString('en-US')} /s` : '—';
+        el('kpiSteps').textContent = `Steps: ${fmtCompact(last?.total_env_steps)}`;
+        el('kpiAvgTurns').textContent = `Avg turns: ${fmtFloat(last?.avg_turns, 1)}`;
+        el('kpiBackend').textContent = league?.backend || 'Trainer';
+
+        // 4. Eval Win Rates (latest non-null)
+        let latestEval = null;
+        for (let i = metrics.length - 1; i >= 0; i--) {
+          const m = metrics[i];
+          if (isNum(m.eval_random_win_rate) || isNum(m.eval_heuristic_win_rate) || isNum(m.eval_league_win_rate)) {
+            latestEval = m;
+            break;
+          }
+        }
+        el('kpiEvalRandom').textContent = fmtPct(latestEval?.eval_random_win_rate, 0);
+        el('kpiEvalHeuristic').textContent = fmtPct(latestEval?.eval_heuristic_win_rate, 0);
+        el('kpiEvalLeague').textContent = fmtPct(latestEval?.eval_league_win_rate, 0);
+        el('kpiEvalUpd').textContent = latestEval ? `@ upd ${latestEval.update}` : 'no eval yet';
+        if (latestEval && (isNum(latestEval.eval_random_avg_turns) || isNum(latestEval.eval_heuristic_avg_turns))) {
+          el('kpiEvalTurns').textContent = `Turns — Rand: ${fmtFloat(latestEval.eval_random_avg_turns, 1)} · Heur: ${fmtFloat(latestEval.eval_heuristic_avg_turns, 1)}`;
+        } else {
+          el('kpiEvalTurns').textContent = 'Eval turns: —';
+        }
+
+        // 5. PFSP League Pool
+        const members = Array.isArray(league?.members) ? league.members : [];
+        const activeMembers = members.filter((m) => m.active !== false);
+        const activeSnapshots = activeMembers.filter((m) => m.kind === 'snapshot').length;
+        const poolCount = activeMembers.length || (isNum(last?.pool_size) ? last.pool_size : null);
+        el('kpiPool').textContent = isNum(poolCount) ? `${poolCount} active` : '—';
+        el('kpiPoolSub').textContent = members.length
+          ? `${activeSnapshots} snap · ${members.length} total`
+          : (isNum(last?.pool_size) ? `Pool size: ${last.pool_size}` : 'Snapshots: —');
+        el('kpiPfspBadge').textContent = league?.pfsp_mode
+          ? `${league.pfsp_mode}${isNum(league.pfsp_p) ? ' · p=' + league.pfsp_p : ''}`
+          : 'PFSP';
+        el('kpiMatchCfg').textContent = league && isNum(league.players)
+          ? `${league.players}P · ${league.max_turns || '—'}t max`
+          : (first ? `Run active` : '—');
+
+        // Header subtitle
+        const runTitle = state.demoMode ? 'demo-ppo-pfsp (preview)' : (state.selectedRun || 'no run selected');
+        const updLabel = isNum(curUpd) ? `Update ${curUpd}${isNum(totUpd) ? '/' + totUpd : ''}` : 'No updates yet';
+        const stamp = state.lastUpdatedAt ? ` · synced ${state.lastUpdatedAt}` : '';
+        el('runMetaLine').textContent = `${runTitle} · ${updLabel}${stamp}`;
+      }
+
+      function getHeuristicElo(league) {
+        if (!league) return null;
+        const member = (league.members || []).find((m) => m.kind === 'heuristic' || m.id === 'heuristic');
+        if (member && isNum(member.elo)) return member.elo;
+        if (league.anchors && isNum(league.anchors.heuristic_elo)) return league.anchors.heuristic_elo;
+        return null;
+      }
+
+      // Render Elo Progression Chart
+      function renderEloChart(metrics, league) {
+        let hist = Array.isArray(league?.elo_history) && league.elo_history.length
+          ? league.elo_history
+          : metrics
+              .filter((m) => isNum(m.learner_elo))
+              .map((m) => ({
+                update: m.update,
+                steps: m.total_env_steps,
+                learner_elo: m.learner_elo,
+                best_snapshot_elo: null,
+                mean_snapshot_elo: null
+              }));
+
+        const useSteps = state.eloAxis === 'steps' && hist.some((d) => isNum(d.steps));
+        const xValues = hist.map((d, idx) => useSteps ? (isNum(d.steps) ? d.steps : idx) : (isNum(d.update) ? d.update : idx + 1));
+
+        const randAnchor = isNum(league?.anchors?.random_elo) ? league.anchors.random_elo : 800;
+        const heurElo = getHeuristicElo(league);
+
+        const refLines = [];
+        if (hist.length) {
+          refLines.push({
+            value: randAnchor,
+            label: `Random Anchor (${Math.round(randAnchor)})`,
+            color: COLORS.sage,
+            dash: [5, 5],
+            alpha: 0.65,
+            align: 'left'
+          });
+          if (isNum(heurElo)) {
+            refLines.push({
+              value: heurElo,
+              label: `Heuristic (${heurElo.toFixed(0)})`,
+              color: COLORS.coral,
+              dash: [6, 4],
+              alpha: 0.72,
+              align: 'right'
+            });
+          }
+        }
+
+        state.charts.elo.setSpec({
+          xValues,
+          formatX: (x) => useSteps ? fmtCompact(x) : `u${Math.round(x)}`,
+          formatY: (y) => Math.round(y).toString(),
+          refLines,
+          series: [
+            {
+              name: 'Mean Snapshot',
+              color: COLORS.slate,
+              width: 1.6,
+              dash: [5, 4],
+              values: hist.map((d) => d.mean_snapshot_elo)
+            },
+            {
+              name: 'Best Snapshot',
+              color: COLORS.gold,
+              width: 2.0,
+              values: hist.map((d) => d.best_snapshot_elo)
+            },
+            {
+              name: 'Learner Elo',
+              color: COLORS.cyan,
+              width: 2.8,
+              glow: true,
+              area: true,
+              areaTop: 'rgba(90, 199, 239, 0.26)',
+              values: hist.map((d) => d.learner_elo)
+            }
+          ],
+          buildTooltip: (idx) => {
+            const d = hist[idx];
+            if (!d) return null;
+            const rows = [];
+            if (isNum(d.learner_elo)) rows.push({ label: 'Learner Elo', value: d.learner_elo.toFixed(1), color: COLORS.cyan });
+            if (isNum(d.best_snapshot_elo)) rows.push({ label: 'Best Snapshot', value: d.best_snapshot_elo.toFixed(1), color: COLORS.gold });
+            if (isNum(d.mean_snapshot_elo)) rows.push({ label: 'Mean Snapshot', value: d.mean_snapshot_elo.toFixed(1), color: COLORS.slate });
+            if (isNum(heurElo) && isNum(d.learner_elo)) {
+              const gap = d.learner_elo - heurElo;
+              rows.push({
+                label: 'vs Heuristic',
+                value: `${gap >= 0 ? '+' : ''}${gap.toFixed(1)}`,
+                color: COLORS.coral,
+                valueColor: gap >= 0 ? COLORS.sage : COLORS.coral
+              });
+            }
+            const title = `Update ${d.update}${isNum(d.steps) ? ' · ' + fmtCompact(d.steps) + ' steps' : ''}`;
+            return { title, rows };
+          }
+        });
+      }
+
+      // Render Evaluation Win Rates Chart
+      function renderEvalChart(metrics) {
+        const evalPts = metrics.filter((m) =>
+          isNum(m.eval_random_win_rate) ||
+          isNum(m.eval_heuristic_win_rate) ||
+          isNum(m.eval_league_win_rate)
+        );
+
+        state.charts.eval.setSpec({
+          xValues: evalPts.map((m) => m.update),
+          yMin: 0,
+          yMax: 100,
+          yTicks: 4,
+          formatX: (x) => `u${Math.round(x)}`,
+          formatY: (y) => `${Math.round(y)}%`,
+          refLines: [
+            { value: 50, label: '50% Parity', color: COLORS.muted, dash: [5, 5], alpha: 0.55, align: 'right' }
+          ],
+          series: [
+            {
+              name: 'vs Random',
+              color: COLORS.sage,
+              width: 2.2,
+              dots: true,
+              values: evalPts.map((m) => isNum(m.eval_random_win_rate) ? m.eval_random_win_rate * 100 : null)
+            },
+            {
+              name: 'vs Heuristic',
+              color: COLORS.coral,
+              width: 2.2,
+              dots: true,
+              values: evalPts.map((m) => isNum(m.eval_heuristic_win_rate) ? m.eval_heuristic_win_rate * 100 : null)
+            },
+            {
+              name: 'vs League',
+              color: COLORS.cyan,
+              width: 2.4,
+              dots: true,
+              values: evalPts.map((m) => isNum(m.eval_league_win_rate) ? m.eval_league_win_rate * 100 : null)
+            }
+          ],
+          buildTooltip: (idx) => {
+            const m = evalPts[idx];
+            if (!m) return null;
+            const rows = [];
+            if (isNum(m.eval_random_win_rate)) {
+              const t = isNum(m.eval_random_avg_turns) ? ` (${m.eval_random_avg_turns.toFixed(0)}t)` : '';
+              rows.push({ label: 'vs Random', value: fmtPct(m.eval_random_win_rate, 1) + t, color: COLORS.sage });
+            }
+            if (isNum(m.eval_heuristic_win_rate)) {
+              const t = isNum(m.eval_heuristic_avg_turns) ? ` (${m.eval_heuristic_avg_turns.toFixed(0)}t)` : '';
+              rows.push({ label: 'vs Heuristic', value: fmtPct(m.eval_heuristic_win_rate, 1) + t, color: COLORS.coral });
+            }
+            if (isNum(m.eval_league_win_rate)) {
+              rows.push({ label: 'vs League', value: fmtPct(m.eval_league_win_rate, 1), color: COLORS.cyan });
+            }
+            return { title: `Eval @ Update ${m.update}`, rows };
+          }
+        });
+      }
+
+      // Render PFSP Sampling Bar Chart
+      function renderPfsp(league) {
+        const listEl = el('pfspList');
+        const members = Array.isArray(league?.members) ? league.members : [];
+        const active = members
+          .filter((m) => m.active !== false)
+          .slice()
+          .sort((a, b) => (b.pfsp_weight || 0) - (a.pfsp_weight || 0));
+
+        el('pfspActiveCount').textContent = `${active.length} active`;
+        if (league?.pfsp_mode) {
+          const pStr = isNum(league.pfsp_p) ? ` (p=${league.pfsp_p})` : '';
+          el('pfspSubtitle').textContent = `PFSP mode: ${league.pfsp_mode}${pStr} — live sampling share across active pool`;
+        } else {
+          el('pfspSubtitle').textContent = 'Live opponent sampling probability weighted by difficulty';
+        }
+
+        if (!active.length) {
+          listEl.innerHTML = '<div class="chart-empty" style="position:static; min-height:190px;">Waiting for league.json…</div>';
+          return;
+        }
+
+        const totalWeight = active.reduce((acc, m) => acc + (isNum(m.pfsp_weight) ? m.pfsp_weight : 0), 0);
+        const maxShare = Math.max(...active.map((m) => totalWeight > 0 ? (m.pfsp_weight || 0) / totalWeight : 0), 0.01);
+
+        listEl.innerHTML = active.map((m) => {
+          const share = totalWeight > 0 ? (m.pfsp_weight || 0) / totalWeight : 0;
+          const barPct = Math.max(2, (share / maxShare) * 100);
+          const color = difficultyColor(m.learner_win_rate);
+          const kindClass = m.kind === 'heuristic' ? 'coral' : (m.kind === 'random' ? 'sage' : 'cyan');
+
+          return `
+            <div class="pfsp-row">
+              <div class="pfsp-row-top">
+                <div class="pfsp-id">
+                  <span>${esc(m.id)}</span>
+                  <span class="badge ${kindClass}">${esc(m.kind || 'member')}</span>
+                </div>
+                <div class="pfsp-stats mono">
+                  <span>Elo ${fmtFloat(m.elo, 0)}</span>
+                  <span style="color:${color};">WR ${fmtPct(m.learner_win_rate, 0)}</span>
+                  <span class="pfsp-pct">${(share * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+              <div class="pfsp-bar-track">
+                <div class="pfsp-bar-fill" style="width:${barPct.toFixed(1)}%; background:${color};"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Sortable League Standings Table
+      function renderLeagueTable(league) {
+        const tbody = el('leagueBody');
+        const members = Array.isArray(league?.members) ? league.members.slice() : [];
+        el('leagueSummary').textContent = `${members.length} member${members.length === 1 ? '' : 's'}`;
+
+        // Update header arrows
+        document.querySelectorAll('#leagueTable th[data-sort]').forEach((th) => {
+          const key = th.dataset.sort;
+          const base = th.dataset.label || th.textContent.replace(/\s*[▲▼]$/, '');
+          th.dataset.label = base;
+          if (key === state.sortKey) {
+            th.classList.add('sorted');
+            th.textContent = `${base} ${state.sortDir === 'asc' ? '▲' : '▼'}`;
+          } else {
+            th.classList.remove('sorted');
+            th.textContent = base;
+          }
+        });
+
+        if (!members.length) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--text-dim); padding: 26px;">No league members recorded yet.</td></tr>';
+          return;
+        }
+
+        const dir = state.sortDir === 'asc' ? 1 : -1;
+        members.sort((a, b) => {
+          const av = a[state.sortKey];
+          const bv = b[state.sortKey];
+          if (typeof av === 'string' || typeof bv === 'string') {
+            return String(av ?? '').localeCompare(String(bv ?? '')) * dir;
+          }
+          if (typeof av === 'boolean' || typeof bv === 'boolean') {
+            return ((av ? 1 : 0) - (bv ? 1 : 0)) * dir;
+          }
+          const na = isNum(av) ? av : -Infinity;
+          const nb = isNum(bv) ? bv : -Infinity;
+          return (na - nb) * dir;
+        });
+
+        tbody.innerHTML = members.map((m) => {
+          const kindBadge = m.kind === 'heuristic' ? 'coral' : (m.kind === 'random' ? 'sage' : 'cyan');
+          const wr = isNum(m.learner_win_rate) ? m.learner_win_rate : null;
+          const wrColor = difficultyColor(wr);
+          const wrPct = isNum(wr) ? Math.max(0, Math.min(100, wr * 100)) : 0;
+          const pfspPct = isNum(m.pfsp_weight) ? Math.max(0, Math.min(100, m.pfsp_weight * 100)) : 0;
+          const active = m.active !== false;
+
+          return `
+            <tr class="${active ? '' : 'inactive-row'}">
+              <td class="mono" style="font-weight:600;">${esc(m.id)}</td>
+              <td><span class="badge ${kindBadge}">${esc(m.kind || 'unknown')}</span></td>
+              <td class="mono" style="font-weight:700; color: var(--text);">${fmtFloat(m.elo, 1)}</td>
+              <td>
+                <div class="wr-cell mono">
+                  <div class="mini-bar"><span style="width:${wrPct.toFixed(1)}%; background:${wrColor};"></span></div>
+                  <span style="color:${wrColor};">${fmtPct(wr, 1)}</span>
+                </div>
+              </td>
+              <td class="mono" style="color: var(--text-muted);">${fmtInt(m.wins)}-${fmtInt(m.losses)}-${fmtInt(m.draws)} <span style="color:var(--text-dim);">(${fmtInt(m.games)})</span></td>
+              <td>
+                <div class="wr-cell mono">
+                  <div class="mini-bar"><span style="width:${pfspPct.toFixed(1)}%; background: var(--cyan);"></span></div>
+                  <span>${fmtPct(m.pfsp_weight, 1)}</span>
+                </div>
+              </td>
+              <td class="mono" style="color: var(--text-muted);">u${fmtInt(m.created_update)}</td>
+              <td><span class="badge ${active ? 'sage' : ''}">${active ? 'Active' : 'Retired'}</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Render 4 PPO Diagnostic Charts
+      function renderDiagnostics(metrics) {
+        const last = metrics.length ? metrics[metrics.length - 1] : null;
+        el('diagMeta').textContent = isNum(last?.learning_rate)
+          ? `LR: ${last.learning_rate.toExponential(2)} · Win Frac: ${fmtPct(last?.win_frac, 1)} · Episodes/upd: ${fmtInt(last?.episodes_finished)}`
+          : 'LR: —';
+
+        el('diagPolicyVal').textContent = `Loss ${fmtFloat(last?.policy_loss, 4)}`;
+        el('diagClipVal').textContent = `Clip ${fmtPct(last?.clip_frac, 1)}`;
+        el('diagValueVal').textContent = fmtFloat(last?.value_loss, 4);
+        el('diagEntropyVal').textContent = fmtFloat(last?.entropy, 3);
+        el('diagKlVal').textContent = `KL ${fmtFloat(last?.approx_kl, 4)}`;
+        el('diagSpsVal').textContent = isNum(last?.steps_per_sec) ? `${Math.round(last.steps_per_sec)} sps` : '— sps';
+
+        const xs = metrics.map((m) => m.update);
+        const fmtX = (x) => `u${Math.round(x)}`;
+
+        // 1. Policy Loss & Clip Fraction
+        state.charts.diagPolicy.setSpec({
+          xValues: xs,
+          yTicks: 4,
+          formatX: fmtX,
+          formatY: (y) => y.toFixed(3),
+          rightAxis: {
+            min: 0,
+            color: COLORS.coral,
+            format: (y) => (y * 100).toFixed(0) + '%'
+          },
+          series: [
+            { name: 'Policy Loss', color: COLORS.cyan, width: 2, values: metrics.map((m) => m.policy_loss) },
+            { name: 'Clip Frac', color: COLORS.coral, width: 1.7, axis: 'right', values: metrics.map((m) => m.clip_frac) }
+          ],
+          buildTooltip: (i) => {
+            const m = metrics[i];
+            if (!m) return null;
+            return {
+              title: `Update ${m.update}`,
+              rows: [
+                { label: 'Policy Loss', value: fmtFloat(m.policy_loss, 5), color: COLORS.cyan },
+                { label: 'Clip Fraction', value: fmtPct(m.clip_frac, 2), color: COLORS.coral }
+              ]
+            };
+          }
+        });
+
+        // 2. Value Loss
+        state.charts.diagValue.setSpec({
+          xValues: xs,
+          yMin: 0,
+          yTicks: 4,
+          formatX: fmtX,
+          formatY: (y) => y >= 0.1 ? y.toFixed(2) : y.toFixed(4),
+          series: [
+            {
+              name: 'Value Loss',
+              color: COLORS.gold,
+              width: 2.1,
+              area: true,
+              areaTop: 'rgba(242, 201, 76, 0.22)',
+              values: metrics.map((m) => m.value_loss)
+            }
+          ],
+          buildTooltip: (i) => {
+            const m = metrics[i];
+            if (!m) return null;
+            return {
+              title: `Update ${m.update}`,
+              rows: [{ label: 'Value Loss', value: fmtFloat(m.value_loss, 5), color: COLORS.gold }]
+            };
+          }
+        });
+
+        // 3. Entropy
+        state.charts.diagEntropy.setSpec({
+          xValues: xs,
+          yTicks: 4,
+          formatX: fmtX,
+          formatY: (y) => y.toFixed(2),
+          series: [
+            {
+              name: 'Entropy',
+              color: COLORS.sage,
+              width: 2.1,
+              area: true,
+              areaTop: 'rgba(183, 222, 116, 0.20)',
+              values: metrics.map((m) => m.entropy)
+            }
+          ],
+          buildTooltip: (i) => {
+            const m = metrics[i];
+            if (!m) return null;
+            const rows = [{ label: 'Masked Entropy', value: fmtFloat(m.entropy, 3), color: COLORS.sage }];
+            if (isNum(m.learning_rate)) {
+              rows.push({ label: 'Learning Rate', value: m.learning_rate.toExponential(2), color: COLORS.muted });
+            }
+            return { title: `Update ${m.update}`, rows };
+          }
+        });
+
+        // 4. Approx KL & Throughput
+        state.charts.diagKl.setSpec({
+          xValues: xs,
+          yMin: 0,
+          yTicks: 4,
+          formatX: fmtX,
+          formatY: (y) => y.toFixed(3),
+          rightAxis: {
+            color: COLORS.cyan,
+            format: (y) => Math.round(y).toString()
+          },
+          series: [
+            { name: 'Approx KL', color: COLORS.coral, width: 2, values: metrics.map((m) => m.approx_kl) },
+            { name: 'Throughput', color: COLORS.cyan, width: 1.7, axis: 'right', values: metrics.map((m) => m.steps_per_sec) }
+          ],
+          buildTooltip: (i) => {
+            const m = metrics[i];
+            if (!m) return null;
+            return {
+              title: `Update ${m.update}`,
+              rows: [
+                { label: 'Approx KL', value: fmtFloat(m.approx_kl, 5), color: COLORS.coral },
+                { label: 'Throughput', value: `${fmtFloat(m.steps_per_sec, 1)} steps/s`, color: COLORS.cyan }
+              ]
+            };
+          }
+        });
+      }
+
+      function renderAll() {
+        const metrics = state.metrics || [];
+        const league = state.league || null;
+        const hasAnyData = metrics.length > 0 || league !== null;
+
+        el('emptyBanner').classList.toggle('visible', !state.demoMode && !hasAnyData);
+        updateStatusPill(hasAnyData);
+
+        renderKpis(metrics, league);
+        renderEloChart(metrics, league);
+        renderEvalChart(metrics);
+        renderPfsp(league);
+        renderLeagueTable(league);
+        renderDiagnostics(metrics);
+      }
+
+      function updateStatusPill(hasAnyData) {
+        const pill = el('statusPill');
+        const text = el('statusText');
+        pill.classList.remove('live', 'paused', 'waiting', 'demo');
+
+        if (state.demoMode) {
+          pill.classList.add('demo');
+          text.textContent = 'DEMO';
+        } else if (state.pollMs === 0) {
+          pill.classList.add('paused');
+          text.textContent = 'PAUSED';
+        } else if (state.lastFetchOk && hasAnyData) {
+          pill.classList.add('live');
+          text.textContent = 'LIVE';
+        } else {
+          pill.classList.add('waiting');
+          text.textContent = 'WAITING';
+        }
+      }
+
+      function renderRunSelector() {
+        const select = el('runSelect');
+        if (state.demoMode) {
+          select.innerHTML = '<option value="__demo__">demo-ppo-pfsp (synthetic)</option>';
+          select.disabled = true;
+          return;
+        }
+        select.disabled = false;
+        if (!state.runs.length) {
+          select.innerHTML = '<option value="">No runs found</option>';
+          return;
+        }
+        const current = state.selectedRun;
+        select.innerHTML = state.runs.map((r) => {
+          const parts = [r.name];
+          if (isNum(r.current_update)) {
+            parts.push(isNum(r.total_updates) ? `u${r.current_update}/${r.total_updates}` : `u${r.current_update}`);
+          }
+          if (isNum(r.learner_elo)) parts.push(`Elo ${Math.round(r.learner_elo)}`);
+          return `<option value="${esc(r.name)}">${esc(parts.join(' · '))}</option>`;
+        }).join('');
+        if (current && state.runs.some((r) => r.name === current)) {
+          select.value = current;
+        }
+      }
+
+      async function fetchLive() {
+        if (state.demoMode) return;
+        try {
+          const runsResp = await fetch('/api/runs', { cache: 'no-store' });
+          if (!runsResp.ok) throw new Error('runs fetch failed');
+          const runsPayload = await runsResp.json();
+          state.runs = Array.isArray(runsPayload.runs) ? runsPayload.runs : [];
+
+          if (!state.selectedRun || !state.runs.some((r) => r.name === state.selectedRun)) {
+            const preferred = state.runs.find((r) => r.has_metrics || r.has_league) || state.runs[0] || null;
+            state.selectedRun = preferred ? preferred.name : null;
+          }
+          renderRunSelector();
+
+          if (!state.selectedRun) {
+            state.metrics = [];
+            state.league = null;
+            state.lastFetchOk = true;
+            state.lastUpdatedAt = new Date().toLocaleTimeString();
+            renderAll();
+            return;
+          }
+
+          const stateResp = await fetch(`/api/runs/${encodeURIComponent(state.selectedRun)}/state`, { cache: 'no-store' });
+          if (!stateResp.ok) throw new Error('run state fetch failed');
+          const data = await stateResp.json();
+          state.metrics = Array.isArray(data.metrics) ? data.metrics : [];
+          state.league = data.league || null;
+          state.lastFetchOk = true;
+          state.lastUpdatedAt = new Date().toLocaleTimeString();
+          renderAll();
+        } catch (_err) {
+          state.lastFetchOk = false;
+          updateStatusPill(state.metrics.length > 0 || state.league !== null);
+        }
+      }
+
+      function schedulePolling() {
+        if (state.pollTimer !== null) {
+          clearInterval(state.pollTimer);
+          state.pollTimer = null;
+        }
+        if (!state.demoMode && state.pollMs > 0) {
+          state.pollTimer = setInterval(fetchLive, state.pollMs);
+        }
+      }
+
+      function setDemoMode(enabled) {
+        state.demoMode = enabled;
+        const btn = el('demoToggle');
+        btn.classList.toggle('demo-active', enabled);
+        btn.textContent = enabled ? 'Exit Demo' : 'Load Demo';
+
+        if (enabled) {
+          const demo = buildDemoData();
+          state.metrics = demo.metrics;
+          state.league = demo.league;
+          state.lastUpdatedAt = 'preview';
+          renderRunSelector();
+          schedulePolling();
+          renderAll();
+        } else {
+          state.metrics = [];
+          state.league = null;
+          renderRunSelector();
+          schedulePolling();
+          fetchLive();
+        }
+      }
+
+      function init() {
+        state.charts.elo = new LineChart('eloCanvas', 'eloEmpty');
+        state.charts.eval = new LineChart('evalCanvas', 'evalEmpty');
+        state.charts.diagPolicy = new LineChart('diagPolicyCanvas', 'diagPolicyEmpty');
+        state.charts.diagValue = new LineChart('diagValueCanvas', 'diagValueEmpty');
+        state.charts.diagEntropy = new LineChart('diagEntropyCanvas', 'diagEntropyEmpty');
+        state.charts.diagKl = new LineChart('diagKlCanvas', 'diagKlEmpty');
+
+        el('runSelect').addEventListener('change', (e) => {
+          state.selectedRun = e.target.value || null;
+          fetchLive();
+        });
+
+        el('pollControls').addEventListener('click', (e) => {
+          const btn = e.target.closest('button[data-poll]');
+          if (!btn) return;
+          state.pollMs = Number(btn.dataset.poll);
+          el('pollControls').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+          schedulePolling();
+          updateStatusPill(state.metrics.length > 0 || state.league !== null);
+          if (state.pollMs > 0 && !state.demoMode) fetchLive();
+        });
+
+        el('eloAxisToggle').addEventListener('click', (e) => {
+          const btn = e.target.closest('button[data-axis]');
+          if (!btn) return;
+          state.eloAxis = btn.dataset.axis;
+          el('eloAxisToggle').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+          renderEloChart(state.metrics, state.league);
+        });
+
+        el('demoToggle').addEventListener('click', () => setDemoMode(!state.demoMode));
+        el('bannerDemoBtn').addEventListener('click', () => setDemoMode(true));
+
+        document.querySelectorAll('#leagueTable th[data-sort]').forEach((th) => {
+          th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            if (state.sortKey === key) {
+              state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+              state.sortKey = key;
+              state.sortDir = (key === 'id' || key === 'kind') ? 'asc' : 'desc';
+            }
+            renderLeagueTable(state.league);
+          });
+        });
+
+        fetchLive();
+        schedulePolling();
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

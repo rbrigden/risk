@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+"""Zero-dependency HTTP server for the Riskbot live training & Elo dashboard."""
+
+from __future__ import annotations
+
+import argparse
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
+from pathlib import Path
+import sys
+from typing import Any
+from urllib.parse import unquote, urlsplit
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DASHBOARD_DIR = Path(__file__).resolve().parent
+
+
+def validate_run_name(name: str) -> str:
+    """Validate that a run directory name is a single safe path segment."""
+    if not name or name in {".", ".."}:
+        raise ValueError("invalid run name")
+    if "/" in name or "\\" in name or "\x00" in name or ".." in name:
+        raise ValueError("invalid run name")
+    if Path(name).name != name:
+        raise ValueError("invalid run name")
+    return name
+
+
+def resolve_run_dir(runs_dir: Path, run_name: str) -> Path:
+    """Resolve and verify that a run directory sits directly inside runs_dir."""
+    safe_name = validate_run_name(run_name)
+    base = runs_dir.resolve()
+    candidate = (base / safe_name).resolve()
+    if candidate.parent != base:
+        raise ValueError("path traversal detected")
+    return candidate
+
+
+def parse_metrics_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Parse newline-delimited JSON metrics, skipping incomplete or malformed lines."""
+    if not path.is_file():
+        return []
+    records: list[dict[str, Any]] = []
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as fh:
+            for raw_line in fh:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    parsed = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict):
+                    records.append(parsed)
+    except OSError:
+        return []
+    return records
+
+
+def read_league_json(path: Path) -> dict[str, Any] | None:
+    """Read league.json safely, returning None if absent or mid-write/corrupt."""
+    if not path.is_file():
+        return None
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        parsed = json.loads(raw)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _last_valid_metric(path: Path) -> dict[str, Any] | None:
+    """Return the last valid JSON object from metrics.jsonl, or None."""
+    metrics = parse_metrics_jsonl(path)
+    return metrics[-1] if metrics else None
+
+
+def list_runs(runs_dir: Path) -> dict[str, list[dict[str, Any]]]:
+    """List available runs sorted newest-first by mtime."""
+    if not runs_dir.exists() or not runs_dir.is_dir():
+        return {"runs": []}
+
+    runs: list[dict[str, Any]] = []
+    try:
+        entries = list(runs_dir.iterdir())
+    except OSError:
+        return {"runs": []}
+
+    for entry in entries:
+        if entry.name.startswith(".") or not entry.is_dir():
+            continue
+
+        metrics_path = entry / "metrics.jsonl"
+        league_path = entry / "league.json"
+        has_metrics = metrics_path.is_file()
+        has_league = league_path.is_file()
+
+        mtimes: list[float] = []
+        for candidate in (entry, metrics_path, league_path):
+            try:
+                if candidate.exists():
+                    mtimes.append(candidate.stat().st_mtime)
+            except OSError:
+                pass
+        mtime = max(mtimes) if mtimes else 0.0
+
+        league = read_league_json(league_path) if has_league else None
+        current_update = league.get("current_update") if league else None
+        total_updates = league.get("total_updates") if league else None
+        learner_elo = league.get("learner_elo") if league else None
+
+        if (current_update is None or learner_elo is None) and has_metrics:
+            last_metric = _last_valid_metric(metrics_path)
+            if last_metric is not None:
+                if current_update is None:
+                    current_update = last_metric.get("update")
+                if learner_elo is None:
+                    learner_elo = last_metric.get("learner_elo")
+
+        runs.append(
+            {
+                "name": entry.name,
+                "has_metrics": has_metrics,
+                "has_league": has_league,
+                "mtime": mtime,
+                "current_update": current_update,
+                "total_updates": total_updates,
+                "learner_elo": learner_elo,
+            }
+        )
+
+    runs.sort(key=lambda item: (item["mtime"], item["name"]), reverse=True)
+    return {"runs": runs}
+
+
+def get_run_state(runs_dir: Path, run_name: str) -> dict[str, Any]:
+    """Load parsed metrics and league snapshot for a single run."""
+    run_dir = resolve_run_dir(runs_dir, run_name)
+    if not run_dir.is_dir():
+        raise FileNotFoundError(f"run not found: {run_name}")
+    return {
+        "run": run_name,
+        "metrics": parse_metrics_jsonl(run_dir / "metrics.jsonl"),
+        "league": read_league_json(run_dir / "league.json"),
+    }
+
+
+def _contains_traversal(raw_segment: str) -> bool:
+    """Detect traversal attempts in raw or percent-encoded URL path segments."""
+    decoded = unquote(raw_segment)
+    lowered = raw_segment.lower()
+    if (
+        ".." in raw_segment
+        or ".." in decoded
+        or "%2e" in lowered
+        or "%2f" in lowered
+        or "%5c" in lowered
+        or "\\" in raw_segment
+        or "\\" in decoded
+        or "\x00" in decoded
+    ):
+        return True
+    return False
+
+
+class DashboardServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        handler_cls: type[BaseHTTPRequestHandler],
+        *,
+        runs_dir: Path,
+        dashboard_dir: Path = DASHBOARD_DIR,
+        quiet: bool = False,
+    ) -> None:
+        self.runs_dir = runs_dir
+        self.dashboard_dir = dashboard_dir
+        self.quiet = quiet
+        super().__init__(server_address, handler_cls)
+
+
+class DashboardHandler(BaseHTTPRequestHandler):
+    server: DashboardServer
+
+    def log_message(self, format: str, *args: Any) -> None:
+        if not getattr(self.server, "quiet", False):
+            super().log_message(format, *args)
+
+    def _send_bytes(
+        self,
+        status: int,
+        body: bytes,
+        content_type: str,
+        *,
+        cache_control: str = "no-store",
+    ) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", cache_control)
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+    def _send_json(self, status: int, payload: Any) -> None:
+        body = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        self._send_bytes(
+            status,
+            body,
+            "application/json; charset=utf-8",
+            cache_control="no-store",
+        )
+
+    def do_HEAD(self) -> None:
+        self.do_GET()
+
+    def do_GET(self) -> None:
+        raw_path = urlsplit(self.path).path
+
+        if raw_path in {"/", "/index.html"}:
+            index_path = self.server.dashboard_dir / "index.html"
+            if not index_path.is_file():
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "dashboard index.html not found"})
+                return
+            try:
+                body = index_path.read_bytes()
+            except OSError:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "failed to read index.html"})
+                return
+            self._send_bytes(
+                HTTPStatus.OK,
+                body,
+                "text/html; charset=utf-8",
+                cache_control="no-cache",
+            )
+            return
+
+        if raw_path == "/api/runs":
+            self._send_json(HTTPStatus.OK, list_runs(self.server.runs_dir))
+            return
+
+        if raw_path == "/api/health":
+            self._send_json(HTTPStatus.OK, {"ok": True})
+            return
+
+        prefix = "/api/runs/"
+        suffix = "/state"
+        if raw_path.startswith(prefix):
+            if _contains_traversal(raw_path):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid run name"})
+                return
+
+            if not raw_path.endswith(suffix):
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+                return
+
+            raw_name = raw_path[len(prefix) : -len(suffix)]
+            if "/" in raw_name or not raw_name:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid run name"})
+                return
+
+            run_name = unquote(raw_name)
+            try:
+                state = get_run_state(self.server.runs_dir, run_name)
+            except ValueError:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid run name"})
+                return
+            except FileNotFoundError:
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "run not found"})
+                return
+
+            self._send_json(HTTPStatus.OK, state)
+            return
+
+        self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+
+
+def resolve_runs_dir(runs_dir_arg: str, repo_root: Path = REPO_ROOT) -> Path:
+    path = Path(runs_dir_arg)
+    return path if path.is_absolute() else (repo_root / path)
+
+
+def create_server(
+    host: str = "127.0.0.1",
+    port: int = 8766,
+    runs_dir: Path | str = "runs",
+    dashboard_dir: Path = DASHBOARD_DIR,
+    *,
+    quiet: bool = False,
+) -> DashboardServer:
+    resolved_runs = (
+        runs_dir if isinstance(runs_dir, Path) else resolve_runs_dir(runs_dir)
+    )
+    return DashboardServer(
+        (host, port),
+        DashboardHandler,
+        runs_dir=resolved_runs,
+        dashboard_dir=dashboard_dir,
+        quiet=quiet,
+    )
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Serve the Riskbot live training & Elo visualizer dashboard."
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8766,
+        help="Port to listen on (default: 8766).",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host interface to bind (default: 127.0.0.1).",
+    )
+    parser.add_argument(
+        "--runs-dir",
+        default="runs",
+        help="Directory containing training runs (resolved relative to repo root if relative).",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    runs_dir = resolve_runs_dir(args.runs_dir)
+    server = create_server(
+        host=args.host,
+        port=args.port,
+        runs_dir=runs_dir,
+        dashboard_dir=DASHBOARD_DIR,
+    )
+    bound_host, bound_port = server.server_address[:2]
+    print(
+        f"Riskbot dashboard listening on http://{bound_host}:{bound_port} "
+        f"(runs dir: {runs_dir})",
+        flush=True,
+    )
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down dashboard server.", flush=True)
+    finally:
+        server.server_close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
