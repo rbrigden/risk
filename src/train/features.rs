@@ -75,7 +75,7 @@ pub struct EncodedObs {
 }
 
 /// Encode `game` from the perspective of `player` (canonicalized ego-centric view).
-pub(crate) fn encode_observation(game: &Game, player: usize, topo: &BoardTopology) -> EncodedObs {
+pub fn encode_observation(game: &Game, player: usize, topo: &BoardTopology) -> EncodedObs {
     let mut owned_counts = [0usize; MAX_PLAYERS];
     let mut troop_counts = [0u64; MAX_PLAYERS];
     let mut total_troops = 0u64;
@@ -289,6 +289,7 @@ pub(crate) fn legal_action_mask(game: &Game, player: usize) -> [bool; ACTION_COU
 
 /// Bounded board-control potential in `[0.0, 1.0]` for `seat`, used for potential-based shaping.
 /// Equals `1.0` when `seat` controls the entire board and `0.0` when `seat` is eliminated.
+#[cfg_attr(not(any(feature = "train", feature = "visualizer")), allow(dead_code))]
 pub(crate) fn board_potential(game: &Game, seat: usize) -> f32 {
     let mut owned = 0usize;
     let mut my_troops = 0u64;

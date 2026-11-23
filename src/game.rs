@@ -118,9 +118,25 @@ pub enum Phase {
     Ended = 3,
 }
 
-#[cfg_attr(not(feature = "visualizer"), allow(dead_code))]
+impl Phase {
+    #[allow(dead_code)]
+    pub fn from_code(code: u8) -> Option<Self> {
+        match code {
+            0 => Some(Self::Reinforce),
+            1 => Some(Self::Attack),
+            2 => Some(Self::Fortify),
+            3 => Some(Self::Ended),
+            _ => None,
+        }
+    }
+}
+
+#[cfg_attr(
+    not(any(feature = "visualizer", feature = "arena-wasm")),
+    allow(dead_code)
+)]
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct BattleOutcome {
+pub struct BattleOutcome {
     pub attack: [u8; 3],
     pub defense: [u8; 2],
     pub attacker_losses: u64,
@@ -165,6 +181,34 @@ impl Game {
         };
         game.start_turn();
         game
+    }
+
+    #[allow(dead_code, clippy::too_many_arguments)]
+    pub fn from_parts(
+        players: usize,
+        max_turns: u32,
+        owner: [usize; N],
+        troops: [u64; N],
+        active: usize,
+        phase: Phase,
+        pending: u64,
+        turns: u32,
+        winner: Option<usize>,
+        seed: Option<u64>,
+    ) -> Self {
+        let rng = seed.map_or_else(ChaCha8Rng::from_os_rng, ChaCha8Rng::seed_from_u64);
+        Self {
+            players,
+            max_turns,
+            owner,
+            troops,
+            active,
+            phase,
+            pending,
+            turns,
+            winner,
+            rng,
+        }
     }
 
     fn start_turn(&mut self) {

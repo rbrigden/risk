@@ -37,6 +37,28 @@ const ACCENT_GOLD: Color32 = Color32::from_rgb(245, 197, 66);
 const ACCENT_RED: Color32 = Color32::from_rgb(240, 102, 96);
 const ACCENT_GREEN: Color32 = Color32::from_rgb(138, 214, 114);
 
+/// Export the deterministic cartographic Risk board geometry as JSON.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn export_board_json() -> serde_json::Value {
+    map::Map::new().export_board_json()
+}
+
+/// Load a `.mpk` policy checkpoint on CPU, auto-detecting `(hidden_dim, num_layers)`.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn load_policy_checkpoint(
+    path: &std::path::Path,
+) -> Result<
+    (
+        crate::train::model::RiskPolicyNet<burn::backend::NdArray>,
+        usize,
+        usize,
+    ),
+    String,
+> {
+    let device = burn::backend::ndarray::NdArrayDevice::Cpu;
+    policy::load_checkpoint_auto(path, &device)
+}
+
 /// Launch the interactive visualizer in a native window, scanning `runs/` for checkpoints.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn run() -> eframe::Result {
@@ -189,12 +211,12 @@ impl MatchSetupDraft {
 
     fn apply_preset(&mut self, players: usize, human_seat0: bool, ckpts: &[DiscoveredCheckpoint]) {
         self.num_players = players.clamp(2, MAX_PLAYERS);
-        for i in 0..MAX_PLAYERS {
+        for (i, seat) in self.seats.iter_mut().enumerate() {
             if i == 0 && human_seat0 {
-                self.seats[i] = SeatKind::Human;
+                *seat = SeatKind::Human;
             } else {
                 let ai_idx = if human_seat0 { i.saturating_sub(1) } else { i };
-                self.seats[i] = default_ai_seat(ckpts, ai_idx);
+                *seat = default_ai_seat(ckpts, ai_idx);
             }
         }
     }

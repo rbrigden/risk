@@ -1,17 +1,39 @@
 //! GPU-accelerated self-play reinforcement learning environment and Masked PPO trainer.
 
 pub mod bots;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    any(feature = "train", feature = "visualizer")
+))]
 pub mod env;
 pub mod features;
+pub mod infer;
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    any(feature = "train", feature = "visualizer")
+))]
 pub mod league;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    any(feature = "train", feature = "visualizer")
+))]
 pub mod model;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    any(feature = "train", feature = "visualizer")
+))]
 pub mod ppo;
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    any(feature = "train", feature = "visualizer")
+))]
 pub mod telemetry;
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(all(
+    test,
+    not(target_arch = "wasm32"),
+    any(feature = "train", feature = "visualizer")
+))]
 mod tests {
     use super::env::{Transition, compute_gae};
     use super::features::{BoardTopology, board_potential, encode_observation};
@@ -31,9 +53,9 @@ mod tests {
             let obs = encode_observation(&game, active, &topo);
             assert!(obs.nodes.iter().all(|v| v.is_finite()));
             assert!(obs.global.iter().all(|v| v.is_finite()));
-            for id in 0..ACTION_COUNT {
+            for (id, &masked) in obs.mask.iter().enumerate() {
                 let legal = game.legal(Action::decode(id).unwrap());
-                assert_eq!(obs.mask[id], legal);
+                assert_eq!(masked, legal);
             }
             let pot = board_potential(&game, active);
             assert!((0.0..=1.0).contains(&pot));

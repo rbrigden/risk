@@ -490,8 +490,8 @@ fn reset_slot(
         sample_slot_controllers(players, self_play_prob, league, rng);
     slot.controllers = controllers;
     slot.rated_matchup = rated_matchup;
-    for seat in 0..MAX_PLAYERS {
-        slot.alive[seat] = seat < players;
+    for (seat, alive) in slot.alive.iter_mut().enumerate() {
+        *alive = seat < players;
     }
 }
 

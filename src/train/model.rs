@@ -2,6 +2,9 @@
 
 use crate::game::{ACTION_COUNT, N};
 use crate::train::features::{BoardTopology, GLOBAL_FEAT_DIM, NODE_FEAT_DIM, NUM_EDGES};
+pub use crate::train::infer::{
+    GraphBlockWeights, LayerNormWeights, LinearWeights, RiskPolicyWeights,
+};
 use burn::nn::{LayerNorm, LayerNormConfig, Linear, LinearConfig};
 use burn::prelude::*;
 use burn::tensor::TensorData;
@@ -283,5 +286,79 @@ impl<B: Backend> RiskPolicyNet<B> {
             .into_data()
             .to_vec::<f32>()
             .expect("values tensor converts to f32")
+    }
+
+    /// Export a read-only CPU copy of all trainable linear and layer-norm parameters.
+    ///
+    /// Weight matrices follow Burn 0.20's row-major `[d_input, d_output]` convention (`y = x @ W + b`),
+    /// and every `LayerNorm` uses Burn's default `epsilon = 1e-5` with biased variance.
+    pub fn export_weights(&self) -> RiskPolicyWeights {
+        RiskPolicyWeights {
+            hidden_dim: self.hidden_dim,
+            num_layers: self.blocks.len(),
+            node_in: extract_linear(&self.node_in),
+            node_norm: extract_layer_norm(&self.node_norm),
+            blocks: self
+                .blocks
+                .iter()
+                .map(|block| GraphBlockWeights {
+                    w_self: extract_linear(&block.w_self),
+                    w_neigh: extract_linear(&block.w_neigh),
+                    norm: extract_layer_norm(&block.norm),
+                })
+                .collect(),
+            global_fuse: extract_linear(&self.global_fuse),
+            global_norm: extract_layer_norm(&self.global_norm),
+            place_head: extract_linear(&self.place_head),
+            edge_proj: extract_linear(&self.edge_proj),
+            edge_norm: extract_layer_norm(&self.edge_norm),
+            attack_head: extract_linear(&self.attack_head),
+            fortify_head: extract_linear(&self.fortify_head),
+            phase_end_head: extract_linear(&self.phase_end_head),
+            value_fc1: extract_linear(&self.value_fc1),
+            value_fc2: extract_linear(&self.value_fc2),
+        }
+    }
+}
+
+fn extract_linear<B: Backend>(layer: &Linear<B>) -> LinearWeights {
+    let w = layer.weight.val();
+    let shape = w.dims();
+    let weight = w
+        .into_data()
+        .to_vec::<f32>()
+        .expect("linear weight tensor converts to f32");
+    let bias = layer.bias.as_ref().map(|b| {
+        b.val()
+            .into_data()
+            .to_vec::<f32>()
+            .expect("linear bias tensor converts to f32")
+    });
+    LinearWeights {
+        shape,
+        weight,
+        bias,
+    }
+}
+
+fn extract_layer_norm<B: Backend>(layer: &LayerNorm<B>) -> LayerNormWeights {
+    let gamma_tensor = layer.gamma.val();
+    let [d_model] = gamma_tensor.dims();
+    let gamma = gamma_tensor
+        .into_data()
+        .to_vec::<f32>()
+        .expect("layernorm gamma tensor converts to f32");
+    let beta = layer.beta.as_ref().map(|b| {
+        b.val()
+            .into_data()
+            .to_vec::<f32>()
+            .expect("layernorm beta tensor converts to f32")
+    });
+    let epsilon = LayerNormConfig::new(d_model).epsilon;
+    LayerNormWeights {
+        d_model,
+        epsilon,
+        gamma,
+        beta,
     }
 }

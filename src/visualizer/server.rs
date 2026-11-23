@@ -447,6 +447,9 @@ impl ServerState {
             return Err("Checkpoint path cannot be empty.".into());
         }
         let path = PathBuf::from(trimmed);
+        if path.extension().and_then(|ext| ext.to_str()) != Some("mpk") {
+            return Err("Checkpoint path must point to a .mpk file.".into());
+        }
         let (hidden_dim, num_layers) = self.registry.preload(&path)?;
         let entry = checkpoint_entry_for_path(&path);
         upsert_custom_checkpoint(&mut self.custom_checkpoints, entry.clone());
@@ -1369,9 +1372,8 @@ fn write_http_response(
          Content-Type: {}\r\n\
          Content-Length: {}\r\n\
          Cache-Control: no-store\r\n\
-         Access-Control-Allow-Origin: *\r\n\
-         Access-Control-Allow-Methods: GET, POST, OPTIONS, HEAD\r\n\
-         Access-Control-Allow-Headers: Content-Type\r\n\
+         X-Content-Type-Options: nosniff\r\n\
+         Referrer-Policy: no-referrer\r\n\
          Connection: close\r\n\r\n",
         resp.status,
         resp.reason,
@@ -1380,10 +1382,9 @@ fn write_http_response(
     );
     if resp.status == 204 {
         header = "HTTP/1.1 204 No Content\r\n\
-         Access-Control-Allow-Origin: *\r\n\
-         Access-Control-Allow-Methods: GET, POST, OPTIONS, HEAD\r\n\
-         Access-Control-Allow-Headers: Content-Type\r\n\
          Cache-Control: no-store\r\n\
+         X-Content-Type-Options: nosniff\r\n\
+         Referrer-Policy: no-referrer\r\n\
          Connection: close\r\n\r\n"
             .to_string();
     }

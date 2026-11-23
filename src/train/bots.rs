@@ -5,7 +5,7 @@ use crate::train::features::BoardTopology;
 use rand::Rng;
 
 /// Choose a uniformly random legal action.
-pub(crate) fn random_action(game: &Game, rng: &mut impl Rng) -> usize {
+pub fn random_action(game: &Game, rng: &mut impl Rng) -> usize {
     let mut chosen = None;
     let mut count = 0usize;
     for id in 0..ACTION_COUNT {
@@ -26,7 +26,7 @@ pub(crate) fn random_action(game: &Game, rng: &mut impl Rng) -> usize {
 /// - Attack: attacks with maximum dice when holding a troop advantage or completing a continent;
 ///   finishes attacking once no favorable attacks remain.
 /// - Fortify: moves excess interior troops toward a friendly border territory.
-pub(crate) fn heuristic_action(game: &Game, topo: &BoardTopology, rng: &mut impl Rng) -> usize {
+pub fn heuristic_action(game: &Game, topo: &BoardTopology, rng: &mut impl Rng) -> usize {
     let me = game.active;
     match game.phase {
         Phase::Reinforce => {

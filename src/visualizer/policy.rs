@@ -587,7 +587,7 @@ fn strip_mpk_extension(path: &Path) -> PathBuf {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn load_checkpoint_auto(
+pub(super) fn load_checkpoint_auto(
     path: &Path,
     device: &NdArrayDevice,
 ) -> Result<(RiskPolicyNet<NdArray>, usize, usize), String> {

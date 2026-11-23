@@ -28,6 +28,7 @@ web-sys = { version = "0.3", features = ["HtmlCanvasElement"], optional = true }
 [features]
 visualizer = ["dep:eframe", "dep:earcutr", "dep:serde", "dep:serde_json", "dep:burn", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys"]
 train = ["dep:burn", "dep:serde", "dep:serde_json"]
+arena-wasm = ["dep:serde", "dep:serde_json", "dep:wasm-bindgen"]
 
 [[bin]]
 name = "riskbot-visualizer"
@@ -44,3 +45,7 @@ required-features = ["visualizer"]
 [[bin]]
 name = "riskbot-train"
 required-features = ["train"]
+
+[[bin]]
+name = "riskbot-export"
+required-features = ["visualizer"]

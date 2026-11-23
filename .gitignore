@@ -1,4 +1,23 @@
+# Build artifacts & local virtualenvs
 /target/
 /.venv/
 __pycache__/
+*.py[cod]
+/dist/
+
+# Local training runs, checkpoints, and telemetry
 /runs/
+*.mpk
+
+# Private web deployment (maintained in a separate private repository)
+/web/arena/
+
+# Secrets & environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS cruft
+.DS_Store
